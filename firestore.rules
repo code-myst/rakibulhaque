@@ -1,0 +1,137 @@
+rules_version = '2';
+
+// ============================================================
+//  RHB / CODEMYST Partner Portal — Firestore Security Rules
+//  Deploy:  firebase deploy --only firestore:rules
+// ============================================================
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userProfile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && userProfile().role == 'admin';
+    }
+
+    function isActivePartner() {
+      return isSignedIn() &&
+        userProfile().role == 'partner' &&
+        userProfile().status == 'active';
+    }
+
+    function isSelf(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // ------------------------------------------------------------ users
+    match /users/{uid} {
+      allow read: if isSelf(uid) || isAdmin();
+
+      // Sign-up creates own profile; users can never escalate to admin
+      // or alter money fields. Admin may create/edit everyone.
+      allow create: if (isSelf(uid)
+                       && request.resource.data.role == 'partner'
+                       && request.resource.data.status == 'pending'
+                       && request.resource.data.balance == 0
+                       && request.resource.data.totalEarnings == 0)
+                    || isAdmin();
+      allow update: if isAdmin()
+                    || (isSelf(uid)
+                        && request.resource.data.role == resource.data.role
+                        && request.resource.data.partnerId == resource.data.partnerId
+                        && request.resource.data.balance == resource.data.balance
+                        && request.resource.data.totalEarnings == resource.data.totalEarnings
+                        && request.resource.data.commissionRate == resource.data.commissionRate
+                        && request.resource.data.status == resource.data.status);
+      allow delete: if isAdmin();
+    }
+
+    // ------------------------------------------------------------ clients
+    match /clients/{clientId} {
+      // Admin sees all; partners may read only docs referred to them
+      allow read: if isAdmin() || (isSignedIn() &&
+        resource.data.referredBy == userProfile().partnerId);
+
+      function validPublicOrder() {
+        return request.resource.data.status == 'pending'
+          && request.resource.data.source == 'pricing'
+          && request.resource.data.amount is number
+          && request.resource.data.amount >= 0
+          && request.resource.data.isFree is bool
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() < 100
+          && request.resource.data.phone is string
+          && request.resource.data.phone.size() >= 11
+          && request.resource.data.referredBy is string
+          && (request.resource.data.referredBy == 'DIRECT'
+              || request.resource.data.referredBy.matches('CM-[0-9]{3,}'))
+          && (!('followUps' in request.resource.data)
+              || request.resource.data.followUps.size() == 0);
+      }
+
+      // 1) Public pricing-page order (no auth required, strictly validated)
+      // 2) Partner referral submission for self
+      // 3) Admin — full control
+      allow create: if validPublicOrder()
+                    || (isActivePartner()
+                        && request.resource.data.status == 'pending'
+                        && request.resource.data.referredBy == userProfile().partnerId)
+                    || isAdmin();
+
+      // Only admin may edit status (commission logic) or delete
+      allow update, delete: if isAdmin();
+    }
+
+    // ------------------------------------------------------------ withdrawals
+    match /withdrawals/{reqId} {
+      // Admin sees all; partner sees own requests
+      allow read: if isAdmin() || (isSignedIn() &&
+        resource.data.partnerId == userProfile().partnerId);
+
+      // Partner creates a request for self; must be pending at creation
+      allow create: if (isActivePartner()
+                        && request.resource.data.status == 'pending'
+                        && request.resource.data.partnerId == userProfile().partnerId
+                        && request.resource.data.amount is number
+                        && request.resource.data.amount > 0)
+                    || isAdmin();
+
+      // Only admin can approve/reject
+      allow update, delete: if isAdmin();
+    }
+
+    // ------------------------------------------------------------ packages (pricing)
+    match /packages/{pkgId} {
+      // Public pricing page reads packages
+      allow read: if true;
+      // Only admin may create/edit/delete pricing
+      allow write: if isAdmin();
+    }
+
+    // ------------------------------------------------------------ editable content
+    match /content/{docId} {
+      // Signed-in partners read resources/guidelines
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ------------------------------------------------------------ settings
+    match /settings/{docId} {
+      // `public` doc powers the public pricing page (WhatsApp etc.)
+      allow read: if docId == 'public' || isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Deny everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

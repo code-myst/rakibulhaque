@@ -1,0 +1,266 @@
+import type { PricingPackage } from "@/lib/types";
+
+/**
+ * Codemyst_Pricing.docx থেকে নেওয়া ডিফল্ট প্রাইসিং।
+ * ফ্রি সার্ভিস আনলিমিটেড (মাসে ৫ জন লিমিট নেই)।
+ * /admin/pricing → "ডিফল্ট প্রাইসিং লোড করুন" বাটনে একবার সিড হয়।
+ */
+export type PackageSeed = Omit<PricingPackage, "id">;
+
+export const DEFAULT_PRICING: PackageSeed[] = [
+  // ── ফ্রি সার্ভিস ──
+  {
+    category: "free",
+    categoryName: "ফ্রি সার্ভিস",
+    name: "Starter Launch (Free)",
+    price: 0,
+    priceType: "fixed",
+    features: [
+      "১ পেজের সাইট (Landing page / Digital visiting card)",
+      "Contact Page",
+      "Fast reload, Super Responsive",
+      "Free subdomain",
+      "Animation",
+      "WhatsApp / Call / Email বাটন",
+      "Google Map, Social link",
+    ],
+    delivery: "১২–১৮ ঘণ্টায় live",
+    note: "Revision ১ বার · আনলিমিটেড",
+    active: true,
+    sortOrder: 1,
+  },
+
+  // ── কাস্টম প্রজেক্ট ──
+  {
+    category: "custom",
+    categoryName: "কাস্টম প্রজেক্ট",
+    name: "Partner Plan",
+    price: null,
+    priceType: "quote",
+    features: [
+      "যাদের সাইট থেকে সরাসরি আয় হয় (Shop, LMS, Blog/News বিজ্ঞাপন, Booking)",
+      "ফ্রি বিল্ড — আয়ের ২০% শেয়ার",
+      "সব order/payment admin panel-এ",
+      "আপনার dashboard access",
+    ],
+    note: "শর্তসাপেক্ষে",
+    active: true,
+    sortOrder: 2,
+  },
+  {
+    category: "custom",
+    categoryName: "কাস্টম প্রজেক্ট",
+    name: "Custom Web Application",
+    price: 1000,
+    priceType: "from",
+    features: [
+      "আইডিয়া আলোচনা + সহজ wireframe (ফ্রি)",
+      "Scope দেখে quote",
+      "প্রয়োজন অনুযায়ী ফিচার",
+    ],
+    delivery: "Scope অনুযায়ী",
+    active: true,
+    sortOrder: 3,
+  },
+
+  // ── Personal (Portfolio) ──
+  {
+    category: "personal",
+    categoryName: "Personal (Portfolio)",
+    name: "Starter",
+    price: 500,
+    priceType: "fixed",
+    features: ["১–৩ পেজ", "Responsive", "Contact form", "Domain setup"],
+    active: true,
+    sortOrder: 4,
+  },
+  {
+    category: "personal",
+    categoryName: "Personal (Portfolio)",
+    name: "Standard",
+    price: 1500,
+    priceType: "fixed",
+    features: ["৫ পেজ", "নিজস্ব domain setup", "Animation", "Gallery"],
+    active: true,
+    sortOrder: 5,
+  },
+  {
+    category: "personal",
+    categoryName: "Personal (Portfolio)",
+    name: "Premium",
+    price: 3500,
+    priceType: "fixed",
+    features: [
+      "Next.js",
+      "SEO",
+      "Animation",
+      "Dark mode",
+      "Admin panel",
+      "PWA",
+      "AI integration",
+      "Multi language",
+    ],
+    popular: true,
+    active: true,
+    sortOrder: 6,
+  },
+
+  // ── Business Website ──
+  {
+    category: "business",
+    categoryName: "Business Website",
+    name: "Starter",
+    price: 500,
+    priceType: "fixed",
+    features: ["৩ পেজ", "Responsive", "WhatsApp/Contact button", "Domain setup"],
+    active: true,
+    sortOrder: 7,
+  },
+  {
+    category: "business",
+    categoryName: "Business Website",
+    name: "Standard",
+    price: 4000,
+    priceType: "fixed",
+    features: [
+      "৭ পেজ",
+      "Admin panel (নিজে content বদলাতে পারবেন)",
+      "Basic SEO",
+      "PWA",
+      "Multi language",
+      "Multi theme",
+    ],
+    popular: true,
+    active: true,
+    sortOrder: 8,
+  },
+  {
+    category: "business",
+    categoryName: "Business Website",
+    name: "Premium",
+    price: 15000,
+    priceType: "fixed",
+    features: [
+      "১৫ পেজ পর্যন্ত",
+      "bKash / Nagad / SSLCommerz payment",
+      "Next.js + TypeScript",
+    ],
+    active: true,
+    sortOrder: 9,
+  },
+
+  // ── LMS ──
+  {
+    category: "lms",
+    categoryName: "LMS (Online Course Platform)",
+    name: "Basic",
+    price: 8000,
+    priceType: "fixed",
+    features: ["একজন শিক্ষক/প্রতিষ্ঠান", "Course, Video/PDF", "Student login"],
+    active: true,
+    sortOrder: 10,
+  },
+  {
+    category: "lms",
+    categoryName: "LMS (Online Course Platform)",
+    name: "Standard",
+    price: 20000,
+    priceType: "fixed",
+    features: ["Quiz", "Certificate", "Payment", "Progress tracking"],
+    popular: true,
+    active: true,
+    sortOrder: 11,
+  },
+  {
+    category: "lms",
+    categoryName: "LMS (Online Course Platform)",
+    name: "Multi-tenant",
+    price: 40000,
+    priceType: "from",
+    features: ["একাধিক প্রতিষ্ঠান", "আলাদা admin ও branding"],
+    note: "Scope দেখে ফাইনাল quote",
+    active: true,
+    sortOrder: 12,
+  },
+
+  // ── Newspaper / Blog ──
+  {
+    category: "news",
+    categoryName: "Newspaper / Blog",
+    name: "Blog",
+    price: 500,
+    priceType: "fixed",
+    features: ["Admin panel", "Category/Tag", "Search", "SEO", "Comment"],
+    active: true,
+    sortOrder: 13,
+  },
+  {
+    category: "news",
+    categoryName: "Newspaper / Blog",
+    name: "News Portal",
+    price: 5000,
+    priceType: "from",
+    features: [
+      "Multi-author",
+      "Breaking news",
+      "AdSense slot",
+      "Trending",
+      "Category পেজ",
+      "Basic SEO",
+    ],
+    active: true,
+    sortOrder: 14,
+  },
+
+  // ── Update Service ──
+  {
+    category: "update",
+    categoryName: "Update Service",
+    name: "Single Update",
+    price: 300,
+    priceType: "from",
+    features: [
+      "Content update (text/image/video)",
+      "Design পরিবর্তন",
+      "নতুন পেজ",
+      "Bug fix",
+      "Mobile responsive fix",
+      "Speed optimization",
+    ],
+    active: true,
+    sortOrder: 15,
+  },
+  {
+    category: "update",
+    categoryName: "Update Service",
+    name: "Update Pack",
+    price: 1000,
+    priceType: "fixed",
+    features: ["৫টা ছোট কাজ এক প্যাকে"],
+    active: true,
+    sortOrder: 16,
+  },
+
+  // ── Maintenance & Support ──
+  {
+    category: "maintenance",
+    categoryName: "Maintenance & Support",
+    name: "Basic",
+    price: 200,
+    priceType: "monthly",
+    features: ["Uptime check", "মাসে ১টা ছোট update"],
+    active: true,
+    sortOrder: 17,
+  },
+  {
+    category: "maintenance",
+    categoryName: "Maintenance & Support",
+    name: "Standard",
+    price: 800,
+    priceType: "monthly",
+    features: ["মাসে ৪টা update", "Backup", "Priority support"],
+    popular: true,
+    active: true,
+    sortOrder: 18,
+  },
+];

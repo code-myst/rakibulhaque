@@ -1,0 +1,22 @@
+import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
+import { getAuth, type Auth } from "firebase/auth";
+import { getFirestore, type Firestore } from "firebase/firestore";
+
+export const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? "AIzaSyCaZNvEPSmwK_ZOe0P84KgEoq_nECXz25o",
+  authDomain: "partner-affiliation.firebaseapp.com",
+  projectId: "partner-affiliation",
+  storageBucket: "partner-affiliation.firebasestorage.app",
+  messagingSenderId: "107743227959",
+  appId: "1:107743227959:web:b2c2671cafe3353e454fb2",
+  measurementId: "G-C2TNJB6Z8D",
+};
+
+/** Guard against re-initialization during Next.js HMR */
+const app: FirebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
+
+const auth: Auth = getAuth(app);
+const db: Firestore = getFirestore(app);
+
+export { app, auth, db };
+export default app;
