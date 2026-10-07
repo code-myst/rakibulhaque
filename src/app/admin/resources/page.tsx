@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { firebaseErrText } from "@/lib/utils";
 import { BookOpen, Loader2, MoveDown, MoveUp, Plus, Save, Trash2 } from "lucide-react";
 import { fetchResourcesContent, saveResourcesContent } from "@/lib/content";
 import { DEFAULT_RESOURCES } from "@/lib/default-resources";
@@ -79,8 +80,9 @@ export default function AdminResourcesPage() {
       setContent(cleaned);
       setDirty(false);
       toast({ title: "সংরক্ষিত ✅", description: "পার্টনারদের Resources পেজ এখনই আপডেট হয়ে গেছে।" });
-    } catch {
-      toast({ variant: "destructive", title: "সংরক্ষণ ব্যর্থ", description: "আবার চেষ্টা করুন।" });
+    } catch (err) {
+      console.error("resources save failed:", err);
+      toast({ variant: "destructive", title: "সংরক্ষণ ব্যর্থ", description: firebaseErrText(err) });
     } finally {
       setSaving(false);
     }

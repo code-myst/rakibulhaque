@@ -7,7 +7,7 @@ import * as React from "react";
 import { FileText, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { deleteBlogPost, saveBlogPost, subscribeBlog } from "@/lib/site-content";
 import type { BlogPost } from "@/lib/types";
-import { formatDate } from "@/lib/utils";
+import { formatDate , firebaseErrText} from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { SiteGate } from "@/components/site/site-gate";
 import { LangField } from "@/components/admin/lang-input";
@@ -109,8 +109,9 @@ function BlogEditor() {
       toast({ title: "সংরক্ষিত ✅", description: values.published ? "ব্লগে লাইভ হয়েছে।" : "ড্রাফট হিসেবে সেভ হয়েছে।" });
       setEditing(null);
       setAdding(false);
-    } catch {
-      toast({ variant: "destructive", title: "সংরক্ষণ ব্যর্থ" });
+    } catch (err) {
+      console.error("save failed:", err);
+      toast({ variant: "destructive", title: "সংরক্ষণ ব্যর্থ", description: firebaseErrText(err) });
     } finally {
       setBusy(false);
     }

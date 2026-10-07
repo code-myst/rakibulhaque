@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import { firebaseErrText } from "@/lib/utils";
 
 function ProjectsEditor() {
   const [content, setContent] = React.useState<SiteContent | null>(null);
@@ -47,8 +48,9 @@ function ProjectsEditor() {
       await saveSiteContent(content);
       setDirty(false);
       toast({ title: "সংরক্ষিত ✅", description: `${projects.length}টা প্রজেক্ট সাইটে আপডেট হয়েছে।` });
-    } catch {
-      toast({ variant: "destructive", title: "সংরক্ষণ ব্যর্থ" });
+    } catch (err) {
+      console.error("save failed:", err);
+      toast({ variant: "destructive", title: "সংরক্ষণ ব্যর্থ", description: firebaseErrText(err) });
     } finally {
       setSaving(false);
     }

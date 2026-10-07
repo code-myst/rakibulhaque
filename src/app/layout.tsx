@@ -25,7 +25,8 @@ export const metadata: Metadata = {
     "Portfolio, dynamic pricing & partner portal of Rakibul Haque Bhuiyan — websites, mobile/desktop apps, AI automation & agents.",
   manifest: "/manifest.json",
   icons: { icon: "/icon.svg" },
-  appleWebApp: { capable: true, title: "RHB Portal", statusBarStyle: "black-translucent" },
+  other: { "mobile-web-app-capable": "yes" },
+  appleWebApp: { title: "RHB Portal", statusBarStyle: "black-translucent" },
 };
 
 export const viewport: Viewport = {

@@ -23,7 +23,7 @@ import {
 } from "@/lib/packages";
 import { saveCategories, subscribeCategories } from "@/lib/categories";
 import { PACKAGE_CATEGORIES, type PricingCategory, type PricingPackage } from "@/lib/types";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice , firebaseErrText} from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -158,8 +158,9 @@ export default function AdminPricingPage() {
       toast({ title: "সংরক্ষিত ✅", description: `${values.name} আপডেট হয়েছে।` });
       setEditing(null);
       setAdding(false);
-    } catch {
-      toast({ variant: "destructive", title: "সংরক্ষণ ব্যর্থ", description: "আবার চেষ্টা করুন।" });
+    } catch (err) {
+      console.error("package save failed:", err);
+      toast({ variant: "destructive", title: "সংরক্ষণ ব্যর্থ", description: firebaseErrText(err) });
     } finally {
       setBusy(false);
     }
@@ -188,8 +189,9 @@ export default function AdminPricingPage() {
         title: `${n}টা প্যাকেজ লোড হয়েছে ✅`,
         description: "সম্পূর্ণ প্রাইসিং (Web, Apps, AI সহ) যোগ হয়েছে।",
       });
-    } catch {
-      toast({ variant: "destructive", title: "সিড ব্যর্থ", description: "Rules deploy করা আছে কিনা দেখুন।" });
+    } catch (err) {
+      console.error("pricing seed failed:", err);
+      toast({ variant: "destructive", title: "সিড ব্যর্থ", description: firebaseErrText(err) });
     } finally {
       setBusy(false);
     }
@@ -532,8 +534,8 @@ function CategoryManager({
       onSaved(cleaned);
       toast({ title: "ক্যাটাগরি সংরক্ষিত ✅", description: "পাবলিক pricing পেজ সাথে সাথে আপডেট।" });
       onOpenChange(false);
-    } catch {
-      toast({ variant: "destructive", title: "সংরক্ষণ ব্যর্থ" });
+    } catch (err) {
+      toast({ variant: "destructive", title: "সংরক্ষণ ব্যর্থ", description: firebaseErrText(err) });
     } finally {
       setBusy(false);
     }

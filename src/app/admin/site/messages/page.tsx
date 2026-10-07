@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { siteDb } from "@/lib/firebase-site";
 import type { ContactMessage } from "@/lib/types";
-import { formatDate } from "@/lib/utils";
+import { formatDate , firebaseErrText} from "@/lib/utils";
 import { useSiteAuth } from "@/hooks/use-site-auth";
 import { useToast } from "@/hooks/use-toast";
 import { SiteGate } from "@/components/site/site-gate";
@@ -79,8 +79,9 @@ function MessagesAdmin() {
       });
       setReply("");
       toast({ title: "রিপ্লাই পাঠানো হয়েছে ✅", description: `${active.email}-কে উত্তর দেওয়া হয়েছে।` });
-    } catch {
-      toast({ variant: "destructive", title: "রিপ্লাই ব্যর্থ" });
+    } catch (err) {
+      console.error("reply failed:", err);
+      toast({ variant: "destructive", title: "রিপ্লাই ব্যর্থ", description: firebaseErrText(err) });
     }
   };
 

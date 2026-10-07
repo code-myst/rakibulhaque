@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { firebaseErrText } from "@/lib/utils";
 
 function SiteContentEditor() {
   const [content, setContent] = React.useState<SiteContent | null>(null);
@@ -37,11 +38,12 @@ function SiteContentEditor() {
       await saveSiteContent(content);
       setDirty(false);
       toast({ title: "সংরক্ষিত ✅", description: "পোর্টফোলিও সাইট সাথে সাথে আপডেট হয়েছে।" });
-    } catch {
+    } catch (err) {
+      console.error("site content save failed:", err);
       toast({
         variant: "destructive",
         title: "সংরক্ষণ ব্যর্থ",
-        description: "site প্রজেক্টের rules (firestore.site.rules) ডিপ্লয় করা আছে কিনা দেখুন।",
+        description: firebaseErrText(err),
       });
     } finally {
       setSaving(false);

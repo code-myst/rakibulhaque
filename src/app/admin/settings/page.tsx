@@ -26,6 +26,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import { firebaseErrText } from "@/lib/utils";
 
 const globalSchema = z.object({
   defaultCommissionRate: z.coerce.number().min(1).max(90),
@@ -87,8 +88,9 @@ export default function AdminSettingsPage() {
       const payload: PortalSettings = { ...values, referralBaseUrl: values.referralBaseUrl ?? "" };
       await saveGlobalSettings(payload);
       toast({ title: "সেটিংস সংরক্ষিত ✅" });
-    } catch {
-      toast({ variant: "destructive", title: "সংরক্ষণ ব্যর্থ" });
+    } catch (err) {
+      console.error("settings save failed:", err);
+      toast({ variant: "destructive", title: "সংরক্ষণ ব্যর্থ", description: firebaseErrText(err) });
     } finally {
       setSavingGlobal(false);
     }
@@ -109,8 +111,9 @@ export default function AdminSettingsPage() {
       };
       await savePublicSettings(payload);
       toast({ title: "পাবলিক সেটিংস সংরক্ষিত ✅", description: "Pricing পেজ ও ব্যানার সাথে সাথে আপডেট হবে।" });
-    } catch {
-      toast({ variant: "destructive", title: "সংরক্ষণ ব্যর্থ" });
+    } catch (err) {
+      console.error("settings save failed:", err);
+      toast({ variant: "destructive", title: "সংরক্ষণ ব্যর্থ", description: firebaseErrText(err) });
     } finally {
       setSavingPublic(false);
     }

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { firebaseErrText } from "@/lib/utils";
 import { Layers, Loader2, Plus, Save, Tag, Trash2 } from "lucide-react";
 import { fetchSiteContent, saveSiteContent } from "@/lib/site-content";
 import { fetchCategories } from "@/lib/categories";
@@ -53,8 +54,9 @@ function ServicesEditor() {
       await saveSiteContent(content);
       setDirty(false);
       toast({ title: "সংরক্ষিত ✅", description: "সার্ভিসেস পেজ ও হোম পেজ আপডেট হয়েছে।" });
-    } catch {
-      toast({ variant: "destructive", title: "সংরক্ষণ ব্যর্থ" });
+    } catch (err) {
+      console.error("save failed:", err);
+      toast({ variant: "destructive", title: "সংরক্ষণ ব্যর্থ", description: firebaseErrText(err) });
     } finally {
       setSaving(false);
     }

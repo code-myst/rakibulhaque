@@ -45,7 +45,7 @@ import { db, firebaseConfig } from "@/lib/firebase";
 import { generatePartnerId } from "@/lib/users";
 import { useAllClients, useAllUsers } from "@/hooks/use-firestore-data";
 import type { AppUser } from "@/lib/types";
-import { formatBDT, formatDate } from "@/lib/utils";
+import { formatBDT, formatDate , firebaseErrText} from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -258,8 +258,9 @@ export default function AdminPartnersPage() {
             : `${values.name}-এর তথ্য সংরক্ষিত হয়েছে।`,
       });
       setEditing(null);
-    } catch {
-      toast({ variant: "destructive", title: "আপডেট ব্যর্থ", description: "আবার চেষ্টা করুন।" });
+    } catch (err) {
+      console.error("partner update failed:", err);
+      toast({ variant: "destructive", title: "আপডেট ব্যর্থ", description: firebaseErrText(err) });
     } finally {
       setBusy(false);
     }
