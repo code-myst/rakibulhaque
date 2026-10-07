@@ -60,9 +60,14 @@ service cloud.firestore {
 
     // ------------------------------------------------------------ clients
     match /clients/{clientId} {
-      // Admin sees all; partners may read only docs referred to them
-      allow read: if isAdmin() || (isSignedIn() &&
-        resource.data.referredBy == userProfile().partnerId);
+      // ক্লায়েন্ট প্রোফাইল: সাইট অ্যাকাউন্ট (anonymous auth) নিজের অর্ডার লাইভ পড়তে পারে
+      // ⚠️ এই clause আগে থাকতে হবে — পরের clause-গুলোতে users get() আছে
+      allow read: if (request.auth != null
+                      && request.auth.token.firebase.sign_in_provider == 'anonymous'
+                      && resource.data.siteUserId == request.auth.uid)
+                    || isAdmin()
+                    || (isSignedIn() &&
+                        resource.data.referredBy == userProfile().partnerId);
 
       function validPublicOrder() {
         return request.resource.data.status == 'pending'

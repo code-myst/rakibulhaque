@@ -32,10 +32,10 @@ import {
 import { siteAuth, siteDb } from "@/lib/firebase-site";
 import {
   subscribeMyMessages,
-  subscribeMyOrders,
   subscribeMyRecommendations,
   submitClientRecommendation,
 } from "@/lib/site-content";
+import { useClientRoleHeal, useLiveOrders } from "@/hooks/use-live-orders";
 import type { ContactMessage, ProfileOrder, Recommendation, SiteRole } from "@/lib/types";
 import { formatDate, formatBDT } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -374,7 +374,8 @@ export default function ProfilePage() {
   const [user, setUser] = React.useState<SiteUser | null>(null);
   const [role, setRole] = React.useState<SiteRole | null>(null);
   const [ready, setReady] = React.useState(false);
-  const [orders, setOrders] = React.useState<ProfileOrder[] | null>(null);
+  const { orders, source: orderSource } = useLiveOrders(user?.uid ?? undefined);
+  useClientRoleHeal(user?.uid ?? undefined, orders);
 
   React.useEffect(() => {
     const unsub = onAuthStateChanged(siteAuth, (u) => {
@@ -398,15 +399,6 @@ export default function ProfilePage() {
       () => setRole("visitor")
     );
     return unsubRole;
-  }, [user]);
-
-  React.useEffect(() => {
-    if (!user) {
-      setOrders(null);
-      return;
-    }
-    const unsub = subscribeMyOrders(user.uid, setOrders);
-    return unsub;
   }, [user]);
 
   if (!ready) {
@@ -474,6 +466,12 @@ export default function ProfilePage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
+          {orderSource === "mirror" && (
+            <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-200">
+              লাইভ স্ট্যাটাস বন্ধ — partner-affiliation প্রজেক্টে Authentication → Sign-in method →
+              <span className="font-semibold"> Anonymous</span> চালু করুন এবং নতুন rules deploy করুন।
+            </p>
+          )}
           {orders === null && <Skeleton className="h-16 w-full" />}
           {orders !== null && orders.length === 0 && (
             <div className="py-6 text-center">
