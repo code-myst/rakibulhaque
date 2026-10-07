@@ -59,6 +59,7 @@ const mapClient = (id: string, d: Record<string, unknown>): Client => ({
   note: (d.note as string) ?? "",
   siteUserId: (d.siteUserId as string) ?? "",
   siteEmail: (d.siteEmail as string) ?? "",
+  anonUid: (d.anonUid as string) ?? "",
 });
 
 const mapWithdrawal = (id: string, d: Record<string, unknown>): Withdrawal => ({

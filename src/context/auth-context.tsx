@@ -23,6 +23,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (fbUser) => {
+      // প্রোফাইলের anonymous read session মূল পোর্টালকে প্রভাবিত করবে না
+      if (fbUser?.isAnonymous) {
+        setUser(null);
+        setAppUser(null);
+        setProfileLoading(false);
+        setLoading(false);
+        return;
+      }
       setUser(fbUser);
       setProfileLoading(!!fbUser);
       if (fbUser) {

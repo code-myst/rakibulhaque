@@ -64,7 +64,7 @@ service cloud.firestore {
       // ⚠️ এই clause আগে থাকতে হবে — পরের clause-গুলোতে users get() আছে
       allow read: if (request.auth != null
                       && request.auth.token.firebase.sign_in_provider == 'anonymous'
-                      && resource.data.siteUserId == request.auth.uid)
+                      && resource.data.anonUid == request.auth.uid)
                     || isAdmin()
                     || (isSignedIn() &&
                         resource.data.referredBy == userProfile().partnerId);

@@ -374,7 +374,7 @@ export default function ProfilePage() {
   const [user, setUser] = React.useState<SiteUser | null>(null);
   const [role, setRole] = React.useState<SiteRole | null>(null);
   const [ready, setReady] = React.useState(false);
-  const { orders, source: orderSource } = useLiveOrders(user?.uid ?? undefined);
+  const { orders, isLive } = useLiveOrders(user?.uid ?? undefined);
   useClientRoleHeal(user?.uid ?? undefined, orders);
 
   React.useEffect(() => {
@@ -466,10 +466,10 @@ export default function ProfilePage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
-          {orderSource === "mirror" && (
+          {!isLive && (
             <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-200">
               লাইভ স্ট্যাটাস বন্ধ — partner-affiliation প্রজেক্টে Authentication → Sign-in method →
-              <span className="font-semibold"> Anonymous</span> চালু করুন এবং নতুন rules deploy করুন।
+              <span className="font-semibold"> Anonymous</span> চালু করুন এবং নতুন rules deploy করুন। (নিচে পুরনো স্ন্যাপশট দেখাচ্ছে)
             </p>
           )}
           {orders === null && <Skeleton className="h-16 w-full" />}

@@ -17,7 +17,8 @@ import {
   UserCircle,
   Zap,
 } from "lucide-react";
-import { db } from "@/lib/firebase";
+import { anonAuth, anonDb } from "@/lib/firebase-anon";
+import { signInAnonymously } from "firebase/auth";
 import { ensureSiteAccount, saveProfileOrder } from "@/lib/site-content";
 import { siteDb } from "@/lib/firebase-site";
 import { useSiteAuth } from "@/hooks/use-site-auth";
@@ -205,7 +206,16 @@ export function OrderDialog({
   ) => {
     if (!ordering) return;
     const amount = ordering.price ?? 0;
-    const clientRef = await addDoc(collection(db, "clients"), {
+    // এই ডিভাইসের anonymous uid — প্রোফাইলে লাইভ অর্ডার পড়ার লিংক
+    let anonUid = "";
+    try {
+      const anonUser =
+        anonAuth.currentUser ?? (await signInAnonymously(anonAuth)).user;
+      anonUid = anonUser.uid;
+    } catch {
+      anonUid = ""; // anonymous বন্ধ থাকলে লাইভ রিড হবে না — বাকি সব ঠিক আছে
+    }
+    const clientRef = await addDoc(collection(anonDb, "clients"), {
       name: customer.name,
       phone: customer.phone,
       package: ordering.name,
@@ -218,6 +228,7 @@ export function OrderDialog({
       note: customer.note?.trim() || "",
       siteUserId: uid ?? "",
       siteEmail: customer.email,
+      anonUid,
       createdAt: serverTimestamp(),
     });
     if (uid) {

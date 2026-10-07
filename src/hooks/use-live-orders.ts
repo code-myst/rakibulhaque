@@ -1,124 +1,132 @@
 "use client";
 
 import * as React from "react";
-import {
-  onAuthStateChanged,
-  signInAnonymously,
-} from "firebase/auth";
+import { signInAnonymously } from "firebase/auth";
 import {
   collection,
   doc,
   onSnapshot,
-  orderBy,
   query,
   updateDoc,
   where,
 } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
-import { siteAuth, siteDb } from "@/lib/firebase-site";
+import { anonAuth, anonDb } from "@/lib/firebase-anon";
+import { siteDb } from "@/lib/firebase-site";
 import type { ProfileOrder } from "@/lib/types";
 
+type OrderDoc = Record<string, unknown>;
+
+function mapOrderDoc(id: string, d: OrderDoc): ProfileOrder {
+  return {
+    id,
+    package: (d.package as string) ?? "—",
+    amount: (d.amount as number) ?? 0,
+    status: (d.status as ProfileOrder["status"]) ?? "pending",
+    referredBy: (d.referredBy as string) ?? "",
+    createdAt: (d.createdAt as { toMillis?: () => number })?.toMillis?.() ?? 0,
+  };
+}
+
 /**
- * ক্লায়েন্ট প্রোফাইলের অর্ডার — সরাসরি project A (partner-affiliation) থেকে লাইভ।
- * anonymous auth দিয়ে নিজের (siteUserId == নিজের uid) অর্ডার পড়ে —
- * অ্যাডমিন status বদলালে ১ সেকেন্ডে প্রোফাইলে দেখা যায়।
+ * ক্লায়েন্ট প্রোফাইলের অর্ডার — দুই source merge করে:
  *
- * Fallback: anonymous provider বন্ধ থাকলে project B-র মিরর স্ন্যাপশট (stale হতে পারে)।
+ * 1. "live": আলাদা anonymous app instance দিয়ে project A-র `clients`
+ *    থেকে নিজের (anonUid ম্যাচ) অর্ডার real-time — অ্যাডমিন status
+ *    বদলালে সাথে সাথে আপডেট হয়। (orderBy নেই — index লাগে না)
+ *
+ * 2. "mirror": project B-র `users/{uid}/orders/*` স্ন্যাপশট —
+ *    পুরনো অর্ডারগুলো (anonUid-এর আগের) এখান থেকে দেখা যায়।
+ *
+ * merge: একই id থাকলে live জেতে; শুধু mirror-এ থাকলে mirror-এরটা যোগ হয়।
  */
 export function useLiveOrders(siteUid: string | undefined) {
-  const [orders, setOrders] = React.useState<ProfileOrder[] | null>(null);
-  const [source, setSource] = React.useState<"live" | "mirror" | null>(null);
+  const [live, setLive] = React.useState<ProfileOrder[] | null>(null);
+  const [mirror, setMirror] = React.useState<ProfileOrder[] | null>(null);
 
-  // anonymous auth (একবার)
+  // anonymous session নিশ্চিত (আলাদা instance — মূল লগইন নিরাপদ)
   React.useEffect(() => {
-    signInAnonymously(auth).catch((e) => {
-      console.error("anonymous sign-in failed (mirror fallback):", e);
-      setSource("mirror");
-    });
+    let alive = true;
+    signInAnonymously(anonAuth)
+      .then(() => alive && setLive((prev) => prev ?? []))
+      .catch((e) => {
+        console.error("anonymous sign-in failed — mirror fallback:", e);
+        if (alive) setLive((prev) => prev ?? []);
+      });
+    return () => {
+      alive = false;
+    };
   }, []);
 
+  // live: project A থেকে নিজের অর্ডার
   React.useEffect(() => {
-    if (!siteUid) {
-      setOrders(null);
-      return;
-    }
-    if (source !== "live") return;
+    const anonUid = anonAuth.currentUser?.uid;
+    if (live === null || !anonUid) return;
 
-    const q = query(
-      collection(db, "clients"),
-      where("siteUserId", "==", siteUid),
-      orderBy("createdAt", "desc")
-    );
+    const q = query(collection(anonDb, "clients"), where("anonUid", "==", anonUid));
     const unsub = onSnapshot(
       q,
       (snap) => {
-        setOrders(
-          snap.docs.map((d) => {
-            const data = d.data();
-            return {
-              id: d.id,
-              package: (data.package as string) ?? "—",
-              amount: (data.amount as number) ?? 0,
-              status: (data.status as ProfileOrder["status"]) ?? "pending",
-              referredBy: (data.referredBy as string) ?? "",
-              createdAt: (data.createdAt as { toMillis?: () => number })?.toMillis?.() ?? 0,
-            };
-          })
+        setLive(
+          snap.docs
+            .map((d) => mapOrderDoc(d.id, d.data() as OrderDoc))
+            .sort((a, b) => b.createdAt - a.createdAt)
         );
       },
       (err) => {
-        console.error("live orders read failed (mirror fallback):", err);
-        setSource("mirror");
+        console.error("live orders read failed:", err);
+        setLive((prev) => prev ?? []);
       }
     );
     return unsub;
-  }, [siteUid, source]);
+  }, [live === null]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Fallback: project B মিরর স্ন্যাপশট
+  // mirror: project B স্ন্যাপশট
   React.useEffect(() => {
-    if (source !== "mirror" || !siteUid) return;
+    if (!siteUid) return;
     const unsub = onSnapshot(
-      doc(siteDb, "users", siteUid),
-      (d) => {
-        const data = d.data() as { orders?: Record<string, ProfileOrder> } | undefined;
-        const list = Object.values(data?.orders ?? {}).sort(
-          (a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0)
+      collection(siteDb, "users", siteUid, "orders"),
+      (snap) => {
+        setMirror(
+          snap.docs
+            .map((d) => {
+              const data = d.data() as OrderDoc;
+              return {
+                id: d.id,
+                package: (data.package as string) ?? "—",
+                amount: (data.amount as number) ?? 0,
+                status: (data.status as ProfileOrder["status"]) ?? "pending",
+                referredBy: (data.referredBy as string) ?? "",
+                createdAt: (data.createdAt as { toMillis?: () => number })?.toMillis?.() ?? 0,
+              } satisfies ProfileOrder;
+            })
+            .sort((a, b) => b.createdAt - a.createdAt)
         );
-        setOrders(list);
       },
-      () => setOrders([])
+      () => setMirror([])
     );
     return unsub;
-  }, [source, siteUid]);
+  }, [siteUid]);
 
-  return { orders, source };
+  // merge: live-এ থাকা id গুলো live থেকে, বাকিগুলো mirror থেকে
+  const orders = React.useMemo(() => {
+    if (live === null && mirror === null) return null;
+    const base = live ?? [];
+    const extra = (mirror ?? []).filter((m) => !base.some((l) => l.id === m.id));
+    return [...base, ...extra].sort((a, b) => b.createdAt - a.createdAt);
+  }, [live, mirror]);
+
+  return { orders, isLive: live !== null };
 }
 
 /** প্রথম অর্ডার থাকলে visitor → client role self-upgrade (rules-এ অনুমোদিত) */
 export function useClientRoleHeal(
   siteUid: string | undefined,
-  orders: ProfileOrder[] | null,
-  onUpgraded?: () => void
+  orders: ProfileOrder[] | null
 ) {
+  const healed = React.useRef(false);
   React.useEffect(() => {
-    if (!siteUid || !orders || orders.length === 0) return;
-    const userRef = doc(siteDb, "users", siteUid);
-    onSnapshot(userRef, (d) => {
-      if (d.exists() && d.data().role === "visitor") {
-        updateDoc(userRef, { role: "client" })
-          .then(() => onUpgraded?.())
-          .catch(() => undefined);
-      }
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [siteUid, orders?.length]);
-}
-
-/** site auth listener helper — profile পেজ দুইবার লিখতে হবে না */
-export function useSiteAuthState(cb: (u: import("firebase/auth").User | null) => void) {
-  React.useEffect(() => {
-    const unsub = onAuthStateChanged(siteAuth, cb);
-    return unsub;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (!siteUid || healed.current || !orders || orders.length === 0) return;
+    healed.current = true;
+    updateDoc(doc(siteDb, "users", siteUid), { role: "client" }).catch(() => undefined);
+  }, [siteUid, orders]);
 }

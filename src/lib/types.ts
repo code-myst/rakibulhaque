@@ -195,6 +195,8 @@ export interface Client {
   siteUserId?: string;
   /** সাইট অ্যাকাউন্টের ইমেইল */
   siteEmail?: string;
+  /** ডিভাইসের anonymous uid (project A) — প্রোফাইলে লাইভ অর্ডার পড়ার লিংক */
+  anonUid?: string;
   /** pricing পেজের অর্ডার ফর্মে ক্লায়েন্টের লেখা নোট */
   note?: string;
 }
