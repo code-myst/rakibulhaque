@@ -13,7 +13,6 @@ import { cn } from "@/lib/utils";
 const LINKS = [
   { href: "/", key: "home", en: "Home", bn: "হোম" },
   { href: "/services", key: "services", en: "Services", bn: "সার্ভিসেস" },
-  { href: "/pricing", key: "pricing", en: "Pricing", bn: "প্রাইসিং" },
   { href: "/about", key: "about", en: "About", bn: "আমার সম্পর্কে" },
   { href: "/blog", key: "blog", en: "Blog", bn: "ব্লগ" },
   { href: "/contact", key: "contact", en: "Contact", bn: "যোগাযোগ" },

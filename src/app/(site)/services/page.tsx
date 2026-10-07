@@ -59,18 +59,12 @@ export default function ServicesPage() {
                   </div>
 
                   <div className="flex flex-col gap-2 lg:w-44">
-                    {svc.pricingCategory ? (
-                      <Button asChild>
-                        <Link href={`/pricing?category=${svc.pricingCategory}`}>
-                          {lang === "bn" ? "প্রাইসিং দেখুন" : "View Pricing"}
-                          <ArrowRight className="h-4 w-4" />
-                        </Link>
-                      </Button>
-                    ) : (
-                      <Button asChild variant="outline">
-                        <Link href="/contact">{lang === "bn" ? "যোগাযোগ করুন" : "Contact"}</Link>
-                      </Button>
-                    )}
+                    <Button asChild>
+                      <Link href={`/services/${svc.id}`}>
+                        {lang === "bn" ? "সার্ভিস ও প্রাইসিং" : "Service & Pricing"}
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </Button>
                     <Button asChild variant="ghost" size="sm">
                       <Link href="/contact">{lang === "bn" ? "প্রশ্ন করুন" : "Ask a question"}</Link>
                     </Button>
@@ -92,7 +86,7 @@ export default function ServicesPage() {
             : "Start with the free Starter site — scale if you like it."}
         </p>
         <Button asChild className="mt-4">
-          <Link href="/pricing?category=free">
+          <Link href="/services/svc-web">
             {lang === "bn" ? "ফ্রি প্যাকেজ দেখুন" : "See the Free Package"}
           </Link>
         </Button>

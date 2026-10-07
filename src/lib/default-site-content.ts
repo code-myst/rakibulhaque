@@ -25,7 +25,7 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     primaryLabel: { en: "View Pricing & Order", bn: "প্রাইসিং দেখুন ও অর্ডার করুন" },
     primaryHref: "/pricing",
     secondaryLabel: { en: "Free Starter Site", bn: "ফ্রি স্টার্টার সাইট" },
-    secondaryHref: "/pricing?category=free",
+    secondaryHref: "/services/svc-web",
   },
   about: {
     title: { en: "About Me", bn: "আমার সম্পর্কে" },
@@ -77,7 +77,14 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
         { en: "Admin panel to edit content", bn: "নিজের content বদলানোর admin panel" },
         { en: "Payment gateway (bKash/SSLCommerz)", bn: "পেমেন্ট গেটওয়ে (bKash/SSLCommerz)" },
       ],
-      pricingCategory: "web",
+categories: [
+        { key: "web-free", label: "ফ্রি স্টার্টার", sortOrder: 1 },
+        { key: "web-portfolio", label: "পোর্টফোলিও", sortOrder: 2 },
+        { key: "web-business", label: "বিজনেস", sortOrder: 3 },
+        { key: "web-lms", label: "LMS", sortOrder: 4 },
+        { key: "web-news", label: "ব্লগ ও নিউজ", sortOrder: 5 },
+        { key: "web-custom", label: "কাস্টম প্রজেক্ট", sortOrder: 6 },
+      ],
     },
     {
       id: "svc-apps",
@@ -92,7 +99,9 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
         { en: "Push notifications ready", bn: "Push notification রেডি" },
         { en: "Store publishing included", bn: "Store publish করাও হয়ে যায়" },
       ],
-      pricingCategory: "apps",
+categories: [
+        { key: "apps-general", label: "অ্যাপ প্যাকেজ", sortOrder: 1 },
+      ],
     },
     {
       id: "svc-automation",
@@ -107,7 +116,9 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
         { en: "AI document parsing", bn: "AI ডকুমেন্ট পার্সিং" },
         { en: "Saves hours every week", bn: "প্রতি সপ্তাহে ঘণ্টার কাজ বাঁচে" },
       ],
-      pricingCategory: "ai-automation",
+categories: [
+        { key: "auto-general", label: "অটোমেশন প্যাকেজ", sortOrder: 1 },
+      ],
     },
     {
       id: "svc-agents",
@@ -122,7 +133,9 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
         { en: "Bangla + English", bn: "বাংলা + English" },
         { en: "Works 24/7 without salary", bn: "বেতন ছাড়াই ২৪/৭ কাজ করে" },
       ],
-      pricingCategory: "ai-agents",
+categories: [
+        { key: "agents-general", label: "এজেন্ট প্যাকেজ", sortOrder: 1 },
+      ],
     },
     {
       id: "svc-support",
@@ -137,7 +150,10 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
         { en: "Monthly care from ৳200", bn: "মাসিক কেয়ার ৳২০০ থেকে" },
         { en: "7-day free bug fix", bn: "৭ দিন ফ্রি বাগ ফিক্স" },
       ],
-      pricingCategory: "update",
+categories: [
+        { key: "update-single", label: "আপডেট", sortOrder: 1 },
+        { key: "maint-general", label: "মেইনটেন্যান্স", sortOrder: 2 },
+      ],
     },
   ],
   projects: [

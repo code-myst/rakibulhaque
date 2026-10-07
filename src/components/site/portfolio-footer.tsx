@@ -31,7 +31,6 @@ export function PortfolioFooter() {
             </p>
             <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
               <li><Link href="/services" className="hover:text-foreground">{lang === "bn" ? "সার্ভিসেস" : "Services"}</Link></li>
-              <li><Link href="/pricing" className="hover:text-foreground">{lang === "bn" ? "প্রাইসিং" : "Pricing"}</Link></li>
               <li><Link href="/blog" className="hover:text-foreground">{lang === "bn" ? "ব্লগ" : "Blog"}</Link></li>
               <li><Link href="/contact" className="hover:text-foreground">{lang === "bn" ? "যোগাযোগ" : "Contact"}</Link></li>
               <li><Link href="/inbox" className="hover:text-foreground">{lang === "bn" ? "আমার মেসেজ" : "My Messages"}</Link></li>

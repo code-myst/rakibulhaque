@@ -3,15 +3,15 @@ import type { PricingPackage } from "@/lib/types";
 /**
  * ডিফল্ট প্রাইসিং — Codemyst_Pricing.docx + নতুন সার্ভিস (Apps, AI Automation, AI Agent)।
  * ক্যাটাগরি: free / web / apps / ai-automation / ai-agents / update / maintenance / custom
- * /admin/pricing → "ডিফল্ট প্রাইসিং লোড করুন" বাটনে সিড হয়।
+ * /admin/services → "ডিফল্ট ক্যাটাগরি ও প্রাইসিং লোড" বাটনে সিড হয়।
  */
 export type PackageSeed = Omit<PricingPackage, "id">;
 
 export const DEFAULT_PRICING: PackageSeed[] = [
   // ── ফ্রি সার্ভিস ──
   {
-    category: "free",
-    categoryName: "ফ্রি সার্ভিস",
+    category: "web-free",
+    categoryName: "ফ্রি স্টার্টার",
     name: "Starter Launch (Free)",
     price: 0,
     priceType: "fixed",
@@ -156,8 +156,8 @@ export const DEFAULT_PRICING: PackageSeed[] = [
 
   // ── মোবাইল ও ডেস্কটপ অ্যাপ ──
   {
-    category: "apps",
-    categoryName: "মোবাইল ও ডেস্কটপ অ্যাপ",
+    category: "apps-general",
+    categoryName: "অ্যাপ প্যাকেজ",
     name: "Android App",
     price: 15000,
     priceType: "from",
@@ -172,8 +172,8 @@ export const DEFAULT_PRICING: PackageSeed[] = [
     sortOrder: 11,
   },
   {
-    category: "apps",
-    categoryName: "মোবাইল ও ডেস্কটপ অ্যাপ",
+    category: "apps-general",
+    categoryName: "অ্যাপ প্যাকেজ",
     name: "iOS App",
     price: 25000,
     priceType: "from",
@@ -188,8 +188,8 @@ export const DEFAULT_PRICING: PackageSeed[] = [
     sortOrder: 12,
   },
   {
-    category: "apps",
-    categoryName: "মোবাইল ও ডেস্কটপ অ্যাপ",
+    category: "apps-general",
+    categoryName: "অ্যাপ প্যাকেজ",
     name: "Cross-Platform (Android + iOS)",
     price: 30000,
     originalPrice: 40000,
@@ -206,8 +206,8 @@ export const DEFAULT_PRICING: PackageSeed[] = [
     sortOrder: 13,
   },
   {
-    category: "apps",
-    categoryName: "মোবাইল ও ডেস্কটপ অ্যাপ",
+    category: "apps-general",
+    categoryName: "অ্যাপ প্যাকেজ",
     name: "Desktop App",
     price: 10000,
     priceType: "from",
@@ -219,8 +219,8 @@ export const DEFAULT_PRICING: PackageSeed[] = [
 
   // ── AI অটোমেশন ──
   {
-    category: "ai-automation",
-    categoryName: "AI অটোমেশন",
+    category: "auto-general",
+    categoryName: "অটোমেশন প্যাকেজ",
     name: "AI Workflow Automation",
     price: 5000,
     priceType: "from",
@@ -236,8 +236,8 @@ export const DEFAULT_PRICING: PackageSeed[] = [
     sortOrder: 15,
   },
   {
-    category: "ai-automation",
-    categoryName: "AI অটোমেশন",
+    category: "auto-general",
+    categoryName: "অটোমেশন প্যাকেজ",
     name: "Business Process Automation",
     price: 8000,
     priceType: "from",
@@ -252,8 +252,8 @@ export const DEFAULT_PRICING: PackageSeed[] = [
     sortOrder: 16,
   },
   {
-    category: "ai-automation",
-    categoryName: "AI অটোমেশন",
+    category: "auto-general",
+    categoryName: "অটোমেশন প্যাকেজ",
     name: "AI Chatbot Integration",
     price: 4000,
     priceType: "from",
@@ -270,8 +270,8 @@ export const DEFAULT_PRICING: PackageSeed[] = [
 
   // ── AI এজেন্ট ──
   {
-    category: "ai-agents",
-    categoryName: "AI এজেন্ট",
+    category: "agents-general",
+    categoryName: "এজেন্ট প্যাকেজ",
     name: "Custom AI Agent",
     price: 8000,
     priceType: "from",
@@ -287,8 +287,8 @@ export const DEFAULT_PRICING: PackageSeed[] = [
     sortOrder: 18,
   },
   {
-    category: "ai-agents",
-    categoryName: "AI এজেন্ট",
+    category: "agents-general",
+    categoryName: "এজেন্ট প্যাকেজ",
     name: "WhatsApp AI Sales Agent",
     price: 12000,
     originalPrice: 16000,
@@ -304,8 +304,8 @@ export const DEFAULT_PRICING: PackageSeed[] = [
     sortOrder: 19,
   },
   {
-    category: "ai-agents",
-    categoryName: "AI এজেন্ট",
+    category: "agents-general",
+    categoryName: "এজেন্ট প্যাকেজ",
     name: "AI Knowledge Assistant (RAG)",
     price: 15000,
     priceType: "from",
@@ -322,8 +322,8 @@ export const DEFAULT_PRICING: PackageSeed[] = [
 
   // ── Update Service ──
   {
-    category: "update",
-    categoryName: "Update Service",
+    category: "update-single",
+    categoryName: "আপডেট",
     name: "Single Update",
     price: 300,
     priceType: "from",
@@ -338,8 +338,8 @@ export const DEFAULT_PRICING: PackageSeed[] = [
     sortOrder: 21,
   },
   {
-    category: "update",
-    categoryName: "Update Service",
+    category: "update-single",
+    categoryName: "আপডেট",
     name: "Update Pack",
     price: 1000,
     priceType: "fixed",
@@ -350,8 +350,8 @@ export const DEFAULT_PRICING: PackageSeed[] = [
 
   // ── Maintenance & Support ──
   {
-    category: "maintenance",
-    categoryName: "Maintenance & Support",
+    category: "maint-general",
+    categoryName: "মেইনটেন্যান্স",
     name: "Basic",
     price: 200,
     priceType: "monthly",
@@ -360,8 +360,8 @@ export const DEFAULT_PRICING: PackageSeed[] = [
     sortOrder: 23,
   },
   {
-    category: "maintenance",
-    categoryName: "Maintenance & Support",
+    category: "maint-general",
+    categoryName: "মেইনটেন্যান্স",
     name: "Standard",
     price: 800,
     priceType: "monthly",
@@ -373,7 +373,7 @@ export const DEFAULT_PRICING: PackageSeed[] = [
 
   // ── কাস্টম প্রজেক্ট ──
   {
-    category: "custom",
+    category: "web-custom",
     categoryName: "কাস্টম প্রজেক্ট",
     name: "Partner Plan",
     price: null,
@@ -389,7 +389,7 @@ export const DEFAULT_PRICING: PackageSeed[] = [
     sortOrder: 25,
   },
   {
-    category: "custom",
+    category: "web-custom",
     categoryName: "কাস্টম প্রজেক্ট",
     name: "Custom Web / App Application",
     price: 1000,

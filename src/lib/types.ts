@@ -18,6 +18,12 @@ export interface SiteSkill {
   group?: string;
 }
 
+export interface SiteServiceCategory {
+  key: string;
+  label: string;
+  sortOrder: number;
+}
+
 export interface SiteService {
   id: string;
   /** lucide icon key — services page-এ ম্যাপ হয় */
@@ -25,8 +31,8 @@ export interface SiteService {
   title: LText;
   description: LText;
   features: LText[];
-  /** partner-affiliation project-এর pricing category key */
-  pricingCategory?: string;
+  /** সার্ভিসের অধীনে ক্যাটাগরি — প্রতিটা ক্যাটাগরির নিচে প্যাকেজ (packages.category = key) */
+  categories: SiteServiceCategory[];
 }
 
 export interface SiteProject {
@@ -116,12 +122,6 @@ export interface Recommendation {
 }
 
 /* ---------------- Pricing categories (editable) ---------------- */
-
-export interface PricingCategory {
-  key: string;
-  label: string;
-  sortOrder: number;
-}
 
 /* ---------------- Firestore document types ---------------- */
 
@@ -222,16 +222,11 @@ export interface PricingPackage {
 }
 
 /** ডিফল্ট ক্যাটাগরি — DB-র settings/categories খালি হলে fallback */
-export const PACKAGE_CATEGORIES: { key: string; label: string }[] = [
-  { key: "free", label: "ফ্রি সার্ভিস" },
-  { key: "web", label: "ওয়েব ডেভেলপমেন্ট" },
-  { key: "apps", label: "মোবাইল ও ডেস্কটপ অ্যাপ" },
-  { key: "ai-automation", label: "AI অটোমেশন" },
-  { key: "ai-agents", label: "AI এজেন্ট" },
-  { key: "update", label: "Update Service" },
-  { key: "maintenance", label: "Maintenance & Support" },
-  { key: "custom", label: "কাস্টম প্রজেক্ট" },
-];
+/* ---------------- Pricing categories ----------------
+ * ক্যাটাগরি এখন সার্ভিসের অধীনে (SiteService.categories) —
+ * packages.category = সেই ক্যাটাগরির key। */
+
+export type PricingCategory = SiteServiceCategory;
 
 /* ---------------- Editable content (`content/resources`) ---------------- */
 

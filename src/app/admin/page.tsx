@@ -211,7 +211,7 @@ export default function AdminOverviewPage() {
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-2">
               <Button asChild variant="outline" size="sm" className="justify-start">
-                <Link href="/admin/pricing">প্রাইসিং ম্যানেজ</Link>
+                <Link href="/admin/services">সার্ভিসেস ও প্রাইসিং</Link>
               </Button>
               <Button asChild variant="outline" size="sm" className="justify-start">
                 <Link href="/admin/withdrawals">উইথড্র রিভিউ</Link>

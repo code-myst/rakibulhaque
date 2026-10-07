@@ -19,7 +19,6 @@ import {
   MoreHorizontal,
   Settings,
   ShieldCheck,
-  Tag,
   UserCircle,
   Users,
   UsersRound,
@@ -60,8 +59,7 @@ export const ADMIN_GROUPS: NavGroup[] = [
     label: "কমার্শিয়াল",
     items: [
       { href: "/admin", label: "ড্যাশবোর্ড", icon: LayoutDashboard },
-      { href: "/admin/services", label: "সার্ভিসেস", icon: Layers },
-      { href: "/admin/pricing", label: "প্রাইসিং", icon: Tag },
+      { href: "/admin/services", label: "সার্ভিসেস ও প্রাইসিং", icon: Layers },
       { href: "/admin/partners", label: "পার্টনারস", icon: UsersRound },
       { href: "/admin/clients", label: "ক্লায়েন্টস ও অর্ডার", icon: Users },
       { href: "/admin/withdrawals", label: "উইথড্র", icon: Banknote },

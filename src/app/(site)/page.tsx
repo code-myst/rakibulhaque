@@ -173,9 +173,9 @@ export default function PortfolioHomePage() {
                   <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-muted-foreground">
                     {t(svc.description)}
                   </p>
-                  {svc.pricingCategory && (
+                  {svc.categories?.length > 0 && (
                     <Link
-                      href={`/pricing?category=${svc.pricingCategory}`}
+                      href={`/services/${svc.id}`}
                       className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-violet-300 hover:underline"
                     >
                       {lang === "bn" ? "প্রাইসিং দেখুন" : "View pricing"} <ArrowRight className="h-3 w-3" />
