@@ -238,25 +238,41 @@ export async function ensureSiteAccount(input: {
   email: string;
   password: string;
 }): Promise<{ uid: string; created: boolean }> {
+  let uid: string;
+  let created = false;
   try {
     const cred = await siteCreateUser(siteAuth, input.email, input.password);
+    uid = cred.user.uid;
+    created = true;
     await siteUpdateProfile(cred.user, { displayName: input.name });
-    await setDoc(doc(siteDb, "users", cred.user.uid), {
-      name: input.name.trim(),
-      email: input.email.trim(),
-      role: "client",
-      createdAt: serverTimestamp(),
-    });
-    return { uid: cred.user.uid, created: true };
   } catch (err) {
     const code = (err as { code?: string })?.code ?? "";
     if (code === "auth/email-already-in-use") {
       // আগের অ্যাকাউন্ট — দেওয়া পাসওয়ার্ডে লগইন
       const cred = await siteSignIn(siteAuth, input.email, input.password);
-      return { uid: cred.user.uid, created: false };
+      uid = cred.user.uid;
+    } else {
+      throw err;
     }
-    throw err;
   }
+
+  // প্রোফাইল ডক — rules-অনুযায়ী নতুন অ্যাকাউন্ট সবসময় "visitor" দিয়ে শুরু হয়
+  // (client upgrade হয় অর্ডারের সময় saveProfileOrder থেকে)। best-effort।
+  try {
+    const snap = await getDoc(doc(siteDb, "users", uid));
+    if (!snap.exists()) {
+      await setDoc(doc(siteDb, "users", uid), {
+        name: input.name.trim(),
+        email: input.email.trim(),
+        role: "visitor",
+        createdAt: serverTimestamp(),
+      });
+    }
+  } catch (e) {
+    console.error("site profile doc ensure failed (non-blocking):", e);
+  }
+
+  return { uid, created };
 }
 
 /** লগইন থাকলে অর্ডার অ্যাকাউন্টের সাথে লিংক: project A client id দিয়ে মিরর */
@@ -264,18 +280,29 @@ export async function saveProfileOrder(
   uid: string,
   order: { id: string; package: string; amount: number; status: "pending" | "working" | "paid"; referredBy: string }
 ) {
-  const { getDoc } = await import("firebase/firestore");
-  const userSnap = await getDoc(doc(siteDb, "users", uid));
-  const role = userSnap.exists() ? (userSnap.data().role as string) : "visitor";
-  // visitor → client upgrade
-  if (role === "visitor") {
-    await setDoc(doc(siteDb, "users", uid), { role: "client" }, { merge: true });
+  // ⚠️ সব কিছু best-effort — অর্ডার (project A) ইতিমধ্যে সেভ হয়ে গেছে;
+  // মিরর ব্যর্থ হলেও ইউজারকে "failed" দেখানো হবে না।
+  try {
+    const userRef = doc(siteDb, "users", uid);
+    const snap = await getDoc(userRef);
+
+    if (!snap.exists()) {
+      // ডক নেই → আগে visitor দিয়ে তৈরি (create rule ✓)
+      await setDoc(userRef, { role: "visitor", createdAt: serverTimestamp() });
+    }
+    if (!snap.exists() || snap.data().role === "visitor") {
+      // visitor → client upgrade (update rule ✓ — affectedKeys ['role'])
+      await updateDoc(userRef, { role: "client" });
+    }
+
+    await setDoc(
+      doc(siteDb, "users", uid, "orders", order.id),
+      { ...order, updatedAt: serverTimestamp() },
+      { merge: true }
+    );
+  } catch (e) {
+    console.error("profile order mirror failed (non-blocking):", e);
   }
-  await setDoc(
-    doc(siteDb, "users", uid, "orders", order.id),
-    { ...order, updatedAt: serverTimestamp() },
-    { merge: true }
-  );
 }
 
 /** অ্যাকাউন্টের অর্ডার হিস্টোরি (real-time) */
@@ -349,22 +376,31 @@ export async function syncOrderStatusToSiteAccount(
   if (!siteAuth.currentUser) return; // সাইট প্রজেক্টে অ্যাডমিন লগইন না থাকলে স্কিপ
   const email = client.email?.trim();
   if (!email) return;
-  const { collection } = await import("firebase/firestore");
-  const userSnaps = await getDocs(
-    query(collection(siteDb, "users"), where("email", "==", email))
-  );
-  if (userSnaps.empty) return;
-  const uid = userSnaps.docs[0].id;
-  await setDoc(
-    doc(siteDb, "users", uid, "orders", client.id),
-    {
-      id: client.id,
-      package: client.package ?? "",
-      amount: client.amount ?? 0,
-      status,
-      referredBy: client.referredBy ?? "",
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true }
-  );
+  try {
+    const userSnaps = await getDocs(
+      query(collection(siteDb, "users"), where("email", "==", email))
+    );
+    if (userSnaps.empty) return;
+    const uid = userSnaps.docs[0].id;
+    const userRef = doc(siteDb, "users", uid);
+    // পুরনো ভাঙা অ্যাকাউন্ট heal — visitor থাকলে client করে দাও (admin users write ✓)
+    const roleSnap = await getDoc(userRef);
+    if (roleSnap.exists() && roleSnap.data().role === "visitor") {
+      await updateDoc(userRef, { role: "client" });
+    }
+    await setDoc(
+      doc(siteDb, "users", uid, "orders", client.id),
+      {
+        id: client.id,
+        package: client.package ?? "",
+        amount: client.amount ?? 0,
+        status,
+        referredBy: client.referredBy ?? "",
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  } catch (e) {
+    console.error("order status sync failed (non-blocking):", e);
+  }
 }
