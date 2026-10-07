@@ -4,6 +4,7 @@ import {
   deleteDoc,
   doc,
   getDoc,
+  getDocs,
   onSnapshot,
   orderBy,
   query,
@@ -13,15 +14,16 @@ import {
   where,
 } from "firebase/firestore";
 import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  updateProfile,
+  createUserWithEmailAndPassword as siteCreateUser,
+  signInWithEmailAndPassword as siteSignIn,
+  updateProfile as siteUpdateProfile,
 } from "firebase/auth";
 import { siteDb, siteAuth } from "@/lib/firebase-site";
 import type {
   BlogPost,
   ContactMessage,
   MessageEntry,
+  ProfileOrder,
   Recommendation,
   SiteContent,
 } from "@/lib/types";
@@ -100,14 +102,14 @@ export async function sendContactMessage(input: {
 
   if (input.password && input.password.length >= 6) {
     try {
-      const cred = await createUserWithEmailAndPassword(
+      const cred = await siteCreateUser(
         siteAuth,
         input.email,
         input.password
       );
       visitorUid = cred.user.uid;
       accountCreated = true;
-      await updateProfile(cred.user, { displayName: input.name });
+      await siteUpdateProfile(cred.user, { displayName: input.name });
       await setDoc(doc(siteDb, "users", cred.user.uid), {
         name: input.name,
         email: input.email,
@@ -119,11 +121,7 @@ export async function sendContactMessage(input: {
       if (code === "auth/email-already-in-use") {
         // আগের অ্যাকাউন্ট আছে — লগইন করে মেসেজ জমা দেওয়ার চেষ্টা
         try {
-          const cred = await signInWithEmailAndPassword(
-            siteAuth,
-            input.email,
-            input.password
-          );
+          const cred = await siteSignIn(siteAuth, input.email, input.password);
           visitorUid = cred.user.uid;
         } catch {
           return {
@@ -230,4 +228,143 @@ export async function setRecommendationStatus(id: string, status: Recommendation
 
 export async function deleteRecommendation(id: string) {
   await deleteDoc(doc(siteDb, "recommendations", id));
+}
+
+/* ---------------- Site account: orders & profile ---------------- */
+
+/** নতুন অ্যাকাউন্ট খোলা বা আছে হলে লগইন — অর্ডার ফর্ম থেকে (পাসওয়ার্ড আবশ্যক) */
+export async function ensureSiteAccount(input: {
+  name: string;
+  email: string;
+  password: string;
+}): Promise<{ uid: string; created: boolean }> {
+  try {
+    const cred = await siteCreateUser(siteAuth, input.email, input.password);
+    await siteUpdateProfile(cred.user, { displayName: input.name });
+    await setDoc(doc(siteDb, "users", cred.user.uid), {
+      name: input.name.trim(),
+      email: input.email.trim(),
+      role: "client",
+      createdAt: serverTimestamp(),
+    });
+    return { uid: cred.user.uid, created: true };
+  } catch (err) {
+    const code = (err as { code?: string })?.code ?? "";
+    if (code === "auth/email-already-in-use") {
+      // আগের অ্যাকাউন্ট — দেওয়া পাসওয়ার্ডে লগইন
+      const cred = await siteSignIn(siteAuth, input.email, input.password);
+      return { uid: cred.user.uid, created: false };
+    }
+    throw err;
+  }
+}
+
+/** লগইন থাকলে অর্ডার অ্যাকাউন্টের সাথে লিংক: project A client id দিয়ে মিরর */
+export async function saveProfileOrder(
+  uid: string,
+  order: { id: string; package: string; amount: number; status: "pending" | "working" | "paid"; referredBy: string }
+) {
+  const { getDoc } = await import("firebase/firestore");
+  const userSnap = await getDoc(doc(siteDb, "users", uid));
+  const role = userSnap.exists() ? (userSnap.data().role as string) : "visitor";
+  // visitor → client upgrade
+  if (role === "visitor") {
+    await setDoc(doc(siteDb, "users", uid), { role: "client" }, { merge: true });
+  }
+  await setDoc(
+    doc(siteDb, "users", uid, "orders", order.id),
+    { ...order, updatedAt: serverTimestamp() },
+    { merge: true }
+  );
+}
+
+/** অ্যাকাউন্টের অর্ডার হিস্টোরি (real-time) */
+export function subscribeMyOrders(uid: string, cb: (orders: ProfileOrder[]) => void) {
+  const q = query(collection(siteDb, "users", uid, "orders"), orderBy("updatedAt", "desc"));
+  return onSnapshot(
+    q,
+    (snap) => {
+      cb(
+        snap.docs.map((d) => {
+          const data = d.data() as Partial<ProfileOrder>;
+          return {
+            ...(data as ProfileOrder),
+            id: d.id,
+            createdAt: (data.createdAt as unknown as { toMillis?: () => number })?.toMillis?.() ?? 0,
+            updatedAt: (data.updatedAt as unknown as { toMillis?: () => number })?.toMillis?.() ?? 0,
+          };
+        })
+      );
+    },
+    () => cb([])
+  );
+}
+
+/** ক্লায়েন্ট রেকমেন্ডেশন জমা (শুধু লগইন করা client) */
+export async function submitClientRecommendation(input: {
+  uid: string;
+  name: string;
+  role: string;
+  text: string;
+  rating: number;
+}) {
+  await addDoc(collection(siteDb, "recommendations"), {
+    ...input,
+    uid: input.uid,
+    status: "pending",
+    createdAt: serverTimestamp(),
+  });
+}
+
+/** নিজের জমা করা রেকমেন্ডেশনগুলো */
+export function subscribeMyRecommendations(uid: string, cb: (recs: Recommendation[]) => void) {
+  const q = query(
+    collection(siteDb, "recommendations"),
+    where("uid", "==", uid),
+    orderBy("createdAt", "desc")
+  );
+  return onSnapshot(
+    q,
+    (snap) => {
+      cb(
+        snap.docs.map((d) => {
+          const data = d.data() as Partial<Recommendation>;
+          return {
+            ...(data as Recommendation),
+            id: d.id,
+            createdAt: (data.createdAt as unknown as { toMillis?: () => number })?.toMillis?.() ?? 0,
+          };
+        })
+      );
+    },
+    () => cb([])
+  );
+}
+
+/** অ্যাডমিন সাইড: ক্লায়েন্টের email দিয়ে সাইট অ্যাকাউন্ট খুঁজে অর্ডার স্ট্যাটাস মিরর আপডেট */
+export async function syncOrderStatusToSiteAccount(
+  client: { id: string; email?: string; name?: string; package?: string; amount?: number; referredBy?: string },
+  status: "pending" | "working" | "paid"
+) {
+  if (!siteAuth.currentUser) return; // সাইট প্রজেক্টে অ্যাডমিন লগইন না থাকলে স্কিপ
+  const email = client.email?.trim();
+  if (!email) return;
+  const { collection } = await import("firebase/firestore");
+  const userSnaps = await getDocs(
+    query(collection(siteDb, "users"), where("email", "==", email))
+  );
+  if (userSnaps.empty) return;
+  const uid = userSnaps.docs[0].id;
+  await setDoc(
+    doc(siteDb, "users", uid, "orders", client.id),
+    {
+      id: client.id,
+      package: client.package ?? "",
+      amount: client.amount ?? 0,
+      status,
+      referredBy: client.referredBy ?? "",
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
 }

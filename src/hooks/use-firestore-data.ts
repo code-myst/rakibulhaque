@@ -57,6 +57,8 @@ const mapClient = (id: string, d: Record<string, unknown>): Client => ({
   followUps: (d.followUps as Client["followUps"]) ?? [],
   commissionRate: (d.commissionRate as number | null) ?? null,
   note: (d.note as string) ?? "",
+  siteUserId: (d.siteUserId as string) ?? "",
+  siteEmail: (d.siteEmail as string) ?? "",
 });
 
 const mapWithdrawal = (id: string, d: Record<string, unknown>): Withdrawal => ({

@@ -35,9 +35,28 @@ service cloud.firestore {
       allow create: if request.auth != null && request.auth.uid == uid
                     && request.resource.data.role == 'visitor'
                     || isAdmin();
+      // ভিজিটর → ক্লায়েন্ট আপগ্রেড (অর্ডার করলে) + phone সেভ
       allow update, delete: if isAdmin() || (request.auth != null && request.auth.uid == uid
                     && request.resource.data.diff(resource.data).affectedKeys()
-                       .hasOnly(['name', 'email']));
+                       .hasOnly(['name', 'email']))
+                    || (request.auth != null && request.auth.uid == uid
+                    && resource.data.role == 'visitor'
+                    && request.resource.data.role == 'client'
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['role', 'phone']))
+                    || (request.auth != null && request.auth.uid == uid
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['phone']));
+
+      // ক্লায়েন্টের অর্ডার স্ন্যাপশট (প্রোফাইল হিস্টোরি)
+      match /orders/{orderId} {
+        allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
+        // ক্লায়েন্ট অর্ডারের সময় নিজের স্ন্যাপশট তৈরি করে; status sync শুধু অ্যাডমিন
+        allow create: if request.auth != null && (request.auth.uid == uid || isAdmin())
+                      && request.resource.data.status == 'pending';
+        allow update: if isAdmin();
+        allow delete: if isAdmin();
+      }
     }
 
     // ------------------------------------------------------------ blog
@@ -91,11 +110,15 @@ service cloud.firestore {
           && request.resource.data.status == 'pending';
       }
 
-      // গেস্ট রেকমেন্ডেশন দিতে পারে (অ্যাডমিন অ্যাপ্রুভ করলে পাবলিক)
-      allow create: if validSubmission();
+      // শুধু লগইন করা ক্লায়েন্ট রেকমেন্ডেশন দিতে পারে (অ্যাডমিন অ্যাপ্রুভ করলে পাবলিক)
+      allow create: if validSubmission() && request.auth != null
+                    && request.resource.data.uid == request.auth.uid
+                    && myRole() == 'client';
 
-      // পাবলিক শুধু approved পড়বে; অ্যাডমিন সব
-      allow read: if resource.data.status == 'approved' || isAdmin();
+      // পাবলিক শুধু approved; জমাদাতা নিজের pending-ও দেখতে পারবে; অ্যাডমিন সব
+      allow read: if resource.data.status == 'approved'
+                  || (request.auth != null && resource.data.uid == request.auth.uid)
+                  || isAdmin();
 
       // পাবলিকের update নেই (rating ইত্যাদি বদলানো যাবে না) — শুধু status ফিল্ড
       // approve করতে হলে অ্যাডমিন হতে হবে

@@ -118,7 +118,23 @@ export interface Recommendation {
   /** 1–5 */
   rating: number;
   status: "pending" | "approved";
+  /** জমা দেওয়া ক্লায়েন্ট অ্যাকাউন্টের uid */
+  uid?: string;
   createdAt: number;
+}
+
+/* ---------------- Site account (rakibul-haque project) ---------------- */
+
+export type SiteRole = "admin" | "client" | "visitor";
+
+export interface ProfileOrder {
+  id: string; // = project A clients doc id
+  package: string;
+  amount: number;
+  status: ClientStatus;
+  referredBy: string;
+  createdAt: number;
+  updatedAt?: number;
 }
 
 /* ---------------- Pricing categories (editable) ---------------- */
@@ -175,6 +191,10 @@ export interface Client {
   followUps?: ClientFollowUp[];
   /** পার্টনার রেটের ওভাররাইড (যেমন ৬ মাসের মধ্যে রিপিট ক্লায়েন্ট = ১০%); null = পার্টনারের রেট */
   commissionRate?: number | null;
+  /** সাইট অ্যাকাউন্টের uid (rakibul-haque project) — প্রোফাইলে অর্ডার হিস্টোরি দেখানোর জন্য */
+  siteUserId?: string;
+  /** সাইট অ্যাকাউন্টের ইমেইল */
+  siteEmail?: string;
   /** pricing পেজের অর্ডার ফর্মে ক্লায়েন্টের লেখা নোট */
   note?: string;
 }

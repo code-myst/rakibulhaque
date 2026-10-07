@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Code2, Globe, Menu, X } from "lucide-react";
+import { Code2, Globe, Menu, UserCircle, X } from "lucide-react";
 import { useSiteContent } from "@/context/site-content";
 import { useLang } from "@/hooks/use-lang";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ const LINKS = [
 
 export function PortfolioNavbar() {
   const { siteOrDefault } = useSiteContent();
-  const { lang, setLang, t } = useLang();
+  const { lang, setLang } = useLang();
   const pathname = usePathname();
   const [open, setOpen] = React.useState(false);
 
@@ -68,8 +68,8 @@ export function PortfolioNavbar() {
             {lang === "bn" ? "বাং" : "EN"}
           </button>
           <Button asChild size="sm" className="hidden sm:inline-flex">
-            <Link href={siteOrDefault.cta.primaryHref || "/pricing"}>
-              {t(siteOrDefault.cta.primaryLabel)}
+            <Link href="/profile">
+              <UserCircle className="h-4 w-4" /> প্রোফাইল
             </Link>
           </Button>
           <Button
@@ -104,8 +104,8 @@ export function PortfolioNavbar() {
                 </Link>
               ))}
               <Button asChild className="mt-2 w-full">
-                <Link href={siteOrDefault.cta.primaryHref || "/pricing"}>
-                  {t(siteOrDefault.cta.primaryLabel)}
+                <Link href="/profile">
+                  <UserCircle className="h-4 w-4" /> প্রোফাইল / অ্যাকাউন্ট
                 </Link>
               </Button>
             </div>

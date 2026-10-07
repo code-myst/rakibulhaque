@@ -4,6 +4,7 @@ import * as z from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -269,8 +270,11 @@ export default function LoginPage() {
               </Button>
 
               <p className="mt-6 text-center text-xs leading-relaxed text-muted-foreground">
-                নতুন পার্টনার? Google দিয়ে সাইন-আপ করুন — অ্যাডমিন অ্যাপ্রুভ করলেই
-                আপনার ড্যাশবোর্ড চালু হবে।
+                নতুন পার্টনার?{" "}
+                <Link href="/partner-register" className="font-semibold text-violet-300 hover:underline">
+                  রেজিস্ট্রেশন করুন
+                </Link>{" "}
+                — অ্যাডমিন অ্যাপ্রুভ করলেই ড্যাশবোর্ড চালু হবে।
               </p>
             </CardContent>
           </Card>

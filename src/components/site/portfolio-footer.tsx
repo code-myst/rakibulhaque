@@ -34,6 +34,7 @@ export function PortfolioFooter() {
               <li><Link href="/blog" className="hover:text-foreground">{lang === "bn" ? "ব্লগ" : "Blog"}</Link></li>
               <li><Link href="/contact" className="hover:text-foreground">{lang === "bn" ? "যোগাযোগ" : "Contact"}</Link></li>
               <li><Link href="/inbox" className="hover:text-foreground">{lang === "bn" ? "আমার মেসেজ" : "My Messages"}</Link></li>
+              <li><Link href="/partner-register" className="hover:text-foreground">{lang === "bn" ? "পার্টনার হন (কমিশন আয়)" : "Become a Partner"}</Link></li>
             </ul>
           </div>
 

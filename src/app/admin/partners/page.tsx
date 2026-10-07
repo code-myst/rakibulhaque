@@ -288,10 +288,12 @@ export default function AdminPartnersPage() {
   const onApprove = async (p: AppUser) => {
     setBusyId(p.uid);
     try {
-      await updateDoc(doc(db, "users", p.uid), { status: "active" });
+      // রেজিস্ট্রেশন ফর্ম থেকে এলে partnerId খালি থাকে — অ্যাপ্রুভে বরাদ্দ হয়
+      const partnerId = p.partnerId || (await generatePartnerId());
+      await updateDoc(doc(db, "users", p.uid), { status: "active", partnerId });
       toast({
         title: "পার্টনার অ্যাপ্রুভ ✅",
-        description: `${p.name} (${p.partnerId}) — এখন ড্যাশবোর্ড ও রেফারেল লিংক ব্যবহার করতে পারবে।`,
+        description: `${p.name} (${partnerId}) — এখন ড্যাশবোর্ড ও রেফারেল লিংক ব্যবহার করতে পারবে।`,
       });
     } catch {
       toast({ variant: "destructive", title: "অ্যাপ্রুভ ব্যর্থ" });

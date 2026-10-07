@@ -31,6 +31,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { db } from "@/lib/firebase";
+import { syncOrderStatusToSiteAccount } from "@/lib/site-content";
 import { useAllClients, useAllUsers } from "@/hooks/use-firestore-data";
 import type { Client, ClientStatus } from "@/lib/types";
 import { formatBDT, formatDate } from "@/lib/utils";
@@ -277,6 +278,7 @@ export default function AdminClientsPage() {
         await runTransaction(db, async (tx) => {
           tx.update(doc(db, "clients", client.id), { status: next });
         });
+        syncOrderStatusToSiteAccount(client, next).catch(() => undefined);
         toast({
           title: "স্ট্যাটাস আপডেট",
           description:
@@ -317,6 +319,7 @@ export default function AdminClientsPage() {
         return earned;
       });
 
+      syncOrderStatusToSiteAccount(client, "paid").catch(() => undefined);
       if (commission > 0) {
         toast({
           title: "পেমেন্ট সম্পন্ন ✅",
@@ -349,6 +352,7 @@ export default function AdminClientsPage() {
             status: "paid",
             isFree: false,
           });
+          syncOrderStatusToSiteAccount(client, "paid").catch(() => undefined);
           toast({ title: "কনভার্ট সম্পন্ন ✅", description: `${client.name} → Paid (DIRECT, কমিশন নেই)` });
         } else {
           const partner = partnerByPid.get(client.referredBy);
@@ -384,8 +388,13 @@ export default function AdminClientsPage() {
           status: "working",
           isFree: false,
         });
+        syncOrderStatusToSiteAccount(client, "working").catch(() => undefined);
         toast({ title: "কনভার্ট হয়েছে ✅", description: `${client.name} → Working (${formatBDT(amount)}) — পেমেন্ট নিলে Paid করুন।` });
       }
+      syncOrderStatusToSiteAccount(
+        { ...client, amount },
+        values.markPaidNow ? "paid" : "working"
+      ).catch(() => undefined);
       setConverting(null);
     } catch {
       toast({ variant: "destructive", title: "কনভার্ট ব্যর্থ" });
