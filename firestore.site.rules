@@ -3,13 +3,27 @@ rules_version = '2';
 // ============================================================
 //  CODEMYST Portfolio Site — Firestore Security Rules
 //  Project: rakibul-haque  (আলাদা Firebase project!)
-//  Firebase Console → rakibul-haque → Firestore → Rules → এই ফাইল পেস্ট
+//
+//  ⚠️ সেটআপ: নিচের ADMIN_EMAILS-এ আপনার Google ইমেইল বসিয়ে Publish করুন।
+//  তারপর অ্যাডমিন প্যানেল → জেনারেল → সাইট কনটেন্ট-এ লগইন করলেই
+//  আপনার অ্যাকাউন্ট অটো-admin হয়ে যাবে (কনসোলে ডক এডিট লাগবে না)।
 // ============================================================
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ⬇️⬇️ এখানে আপনার Google ইমেইল বসান (কমা দিয়ে একাধিকও দেওয়া যায়)
+    function adminEmails() {
+      return ['YOUR-GOOGLE-EMAIL@gmail.com'];
+    }
+
     function isSignedIn() {
       return request.auth != null;
+    }
+
+    function isAllowlistedAdmin() {
+      return isSignedIn()
+        && request.auth.token.email != null
+        && request.auth.token.email in adminEmails();
     }
 
     function myRole() {
@@ -17,36 +31,38 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && myRole() == 'admin';
+      return isSignedIn() && (myRole() == 'admin' || isAllowlistedAdmin());
     }
 
     // ------------------------------------------------------------ site content
     match /site/{docId} {
-      // পাবলিক পোর্টফোলিও পড়ে
       allow read: if true;
-      // শুধু সাইট অ্যাডমিন এডিট করবে
       allow write: if isAdmin();
     }
 
     // ------------------------------------------------------------ users (site project)
     match /users/{uid} {
-      // কনটাক্ট ফর্মে পাসওয়ার্ড দিলে visitor অ্যাকাউন্ট নিজে তৈরি করে
       allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
+      // self-create: visitor সবাই; admin শুধু allowlist-এ থাকা ইমেইল
       allow create: if request.auth != null && request.auth.uid == uid
-                    && request.resource.data.role == 'visitor'
+                    && (request.resource.data.role == 'visitor'
+                        || (request.resource.data.role == 'admin'
+                            && request.auth.token.email in adminEmails()))
                     || isAdmin();
-      // ভিজিটর → ক্লায়েন্ট আপগ্রেড (অর্ডার করলে) + phone সেভ
-      allow update, delete: if isAdmin() || (request.auth != null && request.auth.uid == uid
+      allow update: if isAdmin()
+                    || (request.auth != null && request.auth.uid == uid
                     && request.resource.data.diff(resource.data).affectedKeys()
-                       .hasOnly(['name', 'email']))
+                       .hasOnly(['name', 'email', 'phone']))
                     || (request.auth != null && request.auth.uid == uid
                     && resource.data.role == 'visitor'
                     && request.resource.data.role == 'client'
                     && request.resource.data.diff(resource.data).affectedKeys()
                        .hasOnly(['role', 'phone']))
+                    // allowlist-এ থাকলে visitor → admin আপগ্রেডও অটো
                     || (request.auth != null && request.auth.uid == uid
-                    && request.resource.data.diff(resource.data).affectedKeys()
-                       .hasOnly(['phone']));
+                    && isAllowlistedAdmin()
+                    && request.resource.data.role == 'admin');
+      allow delete: if isAdmin();
 
       // ক্লায়েন্টের অর্ডার স্ন্যাপশট (প্রোফাইল হিস্টোরি)
       match /orders/{orderId} {
@@ -61,7 +77,6 @@ service cloud.firestore {
 
     // ------------------------------------------------------------ blog
     match /blog/{postId} {
-      // published পোস্ট সবাই পড়বে; draft শুধু অ্যাডমিন
       allow read: if resource.data.published == true || isAdmin();
       allow write: if isAdmin();
     }
@@ -72,7 +87,7 @@ service cloud.firestore {
         return request.resource.data.name is string
           && request.resource.data.name.size() > 0
           && request.resource.data.email is string
-          && request.resource.data.email.matches('.*@.*\\..*')
+          && request.resource.data.email.matches('.*@.*\..*')
           && request.resource.data.thread.size() == 1
           && request.resource.data.thread[0].from == 'visitor'
           && request.resource.data.thread[0].text is string
@@ -82,14 +97,9 @@ service cloud.firestore {
               || request.resource.data.visitorUid == request.auth.uid);
       }
 
-      // গেস্ট বা লগইন করা ভিজিটর মেসেজ পাঠাতে পারে
       allow create: if validIncoming();
-
-      // অ্যাডমিন সব দেখে; ভিজিটর শুধু নিজের thread
       allow read: if isAdmin()
                   || (isSignedIn() && resource.data.visitorUid == request.auth.uid);
-
-      // অ্যাডমিন রিপ্লাই/স্ট্যাটাস; ভিজিটর follow-up পাঠাতে পারে (thread append)
       allow update: if isAdmin()
                     || (isSignedIn() && resource.data.visitorUid == request.auth.uid);
       allow delete: if isAdmin();
@@ -107,21 +117,19 @@ service cloud.firestore {
           && request.resource.data.rating is number
           && request.resource.data.rating >= 1
           && request.resource.data.rating <= 5
-          && request.resource.data.status == 'pending';
+          && request.resource.data.status == 'pending'
+          && request.resource.data.uid is string;
       }
 
-      // শুধু লগইন করা ক্লায়েন্ট রেকমেন্ডেশন দিতে পারে (অ্যাডমিন অ্যাপ্রুভ করলে পাবলিক)
+      // শুধু লগইন করা ক্লায়েন্ট (নিজের uid) রেকমেন্ডেশন দিতে পারে
       allow create: if validSubmission() && request.auth != null
                     && request.resource.data.uid == request.auth.uid
-                    && myRole() == 'client';
+                    && (myRole() == 'client' || isAdmin());
 
-      // পাবলিক শুধু approved; জমাদাতা নিজের pending-ও দেখতে পারবে; অ্যাডমিন সব
       allow read: if resource.data.status == 'approved'
                   || (request.auth != null && resource.data.uid == request.auth.uid)
                   || isAdmin();
 
-      // পাবলিকের update নেই (rating ইত্যাদি বদলানো যাবে না) — শুধু status ফিল্ড
-      // approve করতে হলে অ্যাডমিন হতে হবে
       allow update: if isAdmin()
                     && request.resource.data.diff(resource.data).affectedKeys()
                        .hasOnly(['status']);

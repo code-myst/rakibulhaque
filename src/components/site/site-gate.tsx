@@ -2,7 +2,9 @@
 
 import * as React from "react";
 import { Globe, KeyRound, Loader2, LogIn } from "lucide-react";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { FirebaseError } from "firebase/app";
+import { siteDb } from "@/lib/firebase-site";
 import { useSiteAuth } from "@/hooks/use-site-auth";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -15,7 +17,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
  * rakibul-haque প্রজেক্টে একবার লগইন (Email/Google), localStorage-এ থেকে যায়।
  */
 export function SiteGate({ children }: { children: React.ReactNode }) {
-  const { siteUser, siteLoading, signInSite, signInSiteGoogle } = useSiteAuth();
+  const { siteUser, siteRole, siteLoading, signInSite, signInSiteGoogle } = useSiteAuth();
   const { toast } = useToast();
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
@@ -32,7 +34,8 @@ export function SiteGate({ children }: { children: React.ReactNode }) {
   const onEmail = async () => {
     setBusy(true);
     try {
-      await signInSite(email, password);
+      const cred = await signInSite(email, password);
+      await ensureAdminDoc(cred.user.uid, email);
     } catch (err) {
       toast({ variant: "destructive", title: "সাইট লগইন ব্যর্থ", description: friendly(err) });
     } finally {
@@ -43,11 +46,27 @@ export function SiteGate({ children }: { children: React.ReactNode }) {
   const onGoogle = async () => {
     setBusy(true);
     try {
-      await signInSiteGoogle();
+      const cred = await signInSiteGoogle();
+      await ensureAdminDoc(cred.user.uid, cred.user.email ?? "");
     } catch (err) {
       toast({ variant: "destructive", title: "Google লগইন ব্যর্থ", description: friendly(err) });
     } finally {
       setBusy(false);
+    }
+  };
+
+  /** লগইনের পরে users doc নিশ্চিত করা — allowlist-এ থাকলে role: admin */
+  const ensureAdminDoc = async (uid: string, email: string) => {
+    try {
+      const snap = await getDoc(doc(siteDb, "users", uid));
+      if (snap.exists()) return; // আগেই আছে — role যা আছে তাই
+      await setDoc(doc(siteDb, "users", uid), {
+        name: email.split("@")[0],
+        email,
+        role: "admin",
+      });
+    } catch {
+      // allowlist-এ না থাকলে admin তৈরি ব্যর্থ হবে — চুপচাপ পাস
     }
   };
 
@@ -134,5 +153,18 @@ export function SiteGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      {siteRole !== "admin" && (
+        <div className="mx-auto mb-4 max-w-3xl rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+          ⚠️ আপনার সাইট অ্যাকাউন্টে role &quot;admin&quot; নেই — প্রাইসিং/কনটেন্ট সেভ হবে না।{" "}
+          <span className="font-semibold">
+            firestore.site.rules-এর ADMIN_EMAILS-এ আপনার ইমেইল বসিয়ে Publish করুন,
+          </span>{" "}
+          তারপর এই পেজ রিফ্রেশ করুন — অ্যাকাউন্ট অটো-admin হয়ে যাবে।
+        </div>
+      )}
+      {children}
+    </>
+  );
 }

@@ -10,12 +10,14 @@ import {
   type User as SiteUser,
   type UserCredential,
 } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 import { siteAuth, siteDb } from "@/lib/firebase-site";
+
+type SiteRole = "admin" | "client" | "visitor";
 
 export interface SiteAuthContextValue {
   siteUser: SiteUser | null;
-  siteRole: "admin" | "visitor" | null;
+  siteRole: SiteRole | null;
   siteLoading: boolean;
   signInSite: (email: string, password: string) => Promise<UserCredential>;
   signInSiteGoogle: () => Promise<UserCredential>;
@@ -26,28 +28,33 @@ const SiteAuthContext = React.createContext<SiteAuthContextValue | undefined>(un
 
 export function SiteAuthProvider({ children }: { children: React.ReactNode }) {
   const [siteUser, setSiteUser] = React.useState<SiteUser | null>(null);
-  const [siteRole, setSiteRole] = React.useState<"admin" | "visitor" | null>(null);
+  const [siteRole, setSiteRole] = React.useState<SiteRole | null>(null);
   const [siteLoading, setSiteLoading] = React.useState(true);
 
   React.useEffect(() => {
-    const unsub = onAuthStateChanged(siteAuth, async (u) => {
+    let unsubRole: (() => void) | undefined;
+    const unsub = onAuthStateChanged(siteAuth, (u) => {
       setSiteUser(u);
+      unsubRole?.();
       if (u) {
-        try {
-          const snap = await getDoc(doc(siteDb, "users", u.uid));
-          const role = (snap.exists() ? snap.data().role : "visitor") as
-            | "admin"
-            | "visitor";
-          setSiteRole(role ?? "visitor");
-        } catch {
-          setSiteRole(null);
-        }
+        // role live — SiteGate-এর অটো-admin আপগ্রেড সাথে সাথে ধরা পড়ে
+        unsubRole = onSnapshot(
+          doc(siteDb, "users", u.uid),
+          (d) => {
+            const r = d.exists() ? ((d.data().role as string) ?? "visitor") : "visitor";
+            setSiteRole((r === "admin" || r === "client" ? r : "visitor") as SiteRole);
+          },
+          () => setSiteRole("visitor")
+        );
       } else {
         setSiteRole(null);
       }
       setSiteLoading(false);
     });
-    return unsub;
+    return () => {
+      unsubRole?.();
+      unsub();
+    };
   }, []);
 
   const signInSite = React.useCallback(
