@@ -1,0 +1,113 @@
+rules_version = '2';
+
+// ============================================================
+//  CODEMYST Portfolio Site — Firestore Security Rules
+//  Project: rakibul-haque  (আলাদা Firebase project!)
+//  Firebase Console → rakibul-haque → Firestore → Rules → এই ফাইল পেস্ট
+// ============================================================
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function myRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && myRole() == 'admin';
+    }
+
+    // ------------------------------------------------------------ site content
+    match /site/{docId} {
+      // পাবলিক পোর্টফোলিও পড়ে
+      allow read: if true;
+      // শুধু সাইট অ্যাডমিন এডিট করবে
+      allow write: if isAdmin();
+    }
+
+    // ------------------------------------------------------------ users (site project)
+    match /users/{uid} {
+      // কনটাক্ট ফর্মে পাসওয়ার্ড দিলে visitor অ্যাকাউন্ট নিজে তৈরি করে
+      allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
+      allow create: if request.auth != null && request.auth.uid == uid
+                    && request.resource.data.role == 'visitor'
+                    || isAdmin();
+      allow update, delete: if isAdmin() || (request.auth != null && request.auth.uid == uid
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['name', 'email']));
+    }
+
+    // ------------------------------------------------------------ blog
+    match /blog/{postId} {
+      // published পোস্ট সবাই পড়বে; draft শুধু অ্যাডমিন
+      allow read: if resource.data.published == true || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // ------------------------------------------------------------ contact messages
+    match /messages/{msgId} {
+      function validIncoming() {
+        return request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.email is string
+          && request.resource.data.email.matches('.*@.*\\..*')
+          && request.resource.data.thread.size() == 1
+          && request.resource.data.thread[0].from == 'visitor'
+          && request.resource.data.thread[0].text is string
+          && request.resource.data.thread[0].text.size() > 0
+          && request.resource.data.status == 'new'
+          && (request.resource.data.visitorUid == null
+              || request.resource.data.visitorUid == request.auth.uid);
+      }
+
+      // গেস্ট বা লগইন করা ভিজিটর মেসেজ পাঠাতে পারে
+      allow create: if validIncoming();
+
+      // অ্যাডমিন সব দেখে; ভিজিটর শুধু নিজের thread
+      allow read: if isAdmin()
+                  || (isSignedIn() && resource.data.visitorUid == request.auth.uid);
+
+      // অ্যাডমিন রিপ্লাই/স্ট্যাটাস; ভিজিটর follow-up পাঠাতে পারে (thread append)
+      allow update: if isAdmin()
+                    || (isSignedIn() && resource.data.visitorUid == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    // ------------------------------------------------------------ recommendations
+    match /recommendations/{recId} {
+      function validSubmission() {
+        return request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() < 60
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 4
+          && request.resource.data.text.size() < 600
+          && request.resource.data.rating is number
+          && request.resource.data.rating >= 1
+          && request.resource.data.rating <= 5
+          && request.resource.data.status == 'pending';
+      }
+
+      // গেস্ট রেকমেন্ডেশন দিতে পারে (অ্যাডমিন অ্যাপ্রুভ করলে পাবলিক)
+      allow create: if validSubmission();
+
+      // পাবলিক শুধু approved পড়বে; অ্যাডমিন সব
+      allow read: if resource.data.status == 'approved' || isAdmin();
+
+      // পাবলিকের update নেই (rating ইত্যাদি বদলানো যাবে না) — শুধু status ফিল্ড
+      // approve করতে হলে অ্যাডমিন হতে হবে
+      allow update: if isAdmin()
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['status']);
+      allow delete: if isAdmin();
+    }
+
+    // Deny everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

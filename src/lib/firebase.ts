@@ -1,4 +1,4 @@
-import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
+import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
 
@@ -12,8 +12,13 @@ export const firebaseConfig = {
   measurementId: "G-C2TNJB6Z8D",
 };
 
-/** Guard against re-initialization during Next.js HMR */
-const app: FirebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
+/**
+ * Guard against re-initialization during Next.js HMR.
+ * NOTE: `getApps().length` দিয়ে গার্ড করা যায় না — "site" অ্যাপ থাকলে
+ * [DEFAULT] না থাকলেও পাস করে; তাই নাম ধরে খোঁজা হয়।
+ */
+const app: FirebaseApp =
+  getApps().find((a) => a.name === "[DEFAULT]") ?? initializeApp(firebaseConfig);
 
 const auth: Auth = getAuth(app);
 const db: Firestore = getFirestore(app);

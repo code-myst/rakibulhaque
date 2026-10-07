@@ -3,6 +3,126 @@ import type {
   UserCredential,
 } from "firebase/auth";
 
+/* ---------------- Portfolio site (rakibul-haque project) ---------------- */
+
+/** দ্বিভাষিক টেক্সট — পোর্টফোলিওতে EN/বাং টগল */
+export interface LText {
+  en: string;
+  bn: string;
+}
+
+export interface SiteSkill {
+  name: string;
+  /** 0–100 progress bar-এর জন্য */
+  level?: number;
+  group?: string;
+}
+
+export interface SiteService {
+  id: string;
+  /** lucide icon key — services page-এ ম্যাপ হয় */
+  icon: string;
+  title: LText;
+  description: LText;
+  features: LText[];
+  /** partner-affiliation project-এর pricing category key */
+  pricingCategory?: string;
+}
+
+export interface SiteProject {
+  id: string;
+  title: LText;
+  description: LText;
+  image?: string;
+  link?: string;
+  tags: string[];
+  featured: boolean;
+}
+
+export interface SiteContent {
+  profile: {
+    name: string;
+    /** URL দিয়ে প্রোফাইল ছবি */
+    photoUrl?: string;
+    badge: LText;
+    roles: LText[];
+    tagline: LText;
+  };
+  cta: {
+    primaryLabel: LText;
+    primaryHref: string;
+    secondaryLabel: LText;
+    secondaryHref: string;
+  };
+  about: {
+    title: LText;
+    paragraphs: LText[];
+    skills: SiteSkill[];
+    languages: string[];
+    stats: { value: string; label: LText }[];
+  };
+  services: SiteService[];
+  projects: SiteProject[];
+  contact: {
+    email: string;
+    phone: string;
+    whatsapp: string;
+    location: LText;
+    socials: { label: string; url: string }[];
+  };
+  seo?: { title: LText; description: LText };
+  updatedAt?: number;
+}
+
+export interface BlogPost {
+  id: string;
+  slug: string;
+  title: LText;
+  excerpt: LText;
+  /** plain text — ফাঁকা লাইন = নতুন প্যারাগ্রাফ */
+  content: LText;
+  cover?: string;
+  tags: string[];
+  published: boolean;
+  createdAt: number;
+}
+
+export interface MessageEntry {
+  from: "visitor" | "admin";
+  text: string;
+  at: number;
+}
+
+export interface ContactMessage {
+  id: string;
+  name: string;
+  email: string;
+  /** অ্যাকাউন্ট খুলে পাঠালে সেট; গেস্ট হলে null */
+  visitorUid?: string | null;
+  thread: MessageEntry[];
+  status: "new" | "read" | "replied";
+  createdAt: number;
+}
+
+export interface Recommendation {
+  id: string;
+  name: string;
+  role: string;
+  text: string;
+  /** 1–5 */
+  rating: number;
+  status: "pending" | "approved";
+  createdAt: number;
+}
+
+/* ---------------- Pricing categories (editable) ---------------- */
+
+export interface PricingCategory {
+  key: string;
+  label: string;
+  sortOrder: number;
+}
+
 /* ---------------- Firestore document types ---------------- */
 
 export type UserRole = "admin" | "partner";
@@ -27,6 +147,9 @@ export interface AppUser {
   /** available commission balance (৳) */
   balance: number;
   totalEarnings: number;
+  /** কমিশন তোলার মাধ্যম — নতুন পার্টনার অ্যাপ্রুভের আগে জমা দেয় */
+  paymentMethod?: WithdrawalMethod | "";
+  paymentNumber?: string;
   createdAt?: number;
 }
 
@@ -70,10 +193,10 @@ export interface Withdrawal {
 
 export type PackageCategory =
   | "free"
-  | "personal"
-  | "business"
-  | "lms"
-  | "news"
+  | "web"
+  | "apps"
+  | "ai-automation"
+  | "ai-agents"
   | "update"
   | "maintenance"
   | "custom";
@@ -82,12 +205,14 @@ export type PriceType = "fixed" | "from" | "quote" | "monthly";
 
 export interface PricingPackage {
   id: string;
-  category: PackageCategory;
+  category: PackageCategory | string;
   categoryName: string;
   name: string;
   /** null = quote-based */
   price: number | null;
   priceType: PriceType;
+  /** আগের দাম (স্ট্রাইকথ্রু + "Save ৳X" ব্যাজের জন্য) */
+  originalPrice?: number | null;
   features: string[];
   delivery?: string;
   note?: string;
@@ -96,12 +221,13 @@ export interface PricingPackage {
   sortOrder: number;
 }
 
-export const PACKAGE_CATEGORIES: { key: PackageCategory; label: string }[] = [
+/** ডিফল্ট ক্যাটাগরি — DB-র settings/categories খালি হলে fallback */
+export const PACKAGE_CATEGORIES: { key: string; label: string }[] = [
   { key: "free", label: "ফ্রি সার্ভিস" },
-  { key: "personal", label: "Personal (Portfolio)" },
-  { key: "business", label: "Business Website" },
-  { key: "lms", label: "LMS (Course Platform)" },
-  { key: "news", label: "Newspaper / Blog" },
+  { key: "web", label: "ওয়েব ডেভেলপমেন্ট" },
+  { key: "apps", label: "মোবাইল ও ডেস্কটপ অ্যাপ" },
+  { key: "ai-automation", label: "AI অটোমেশন" },
+  { key: "ai-agents", label: "AI এজেন্ট" },
   { key: "update", label: "Update Service" },
   { key: "maintenance", label: "Maintenance & Support" },
   { key: "custom", label: "কাস্টম প্রজেক্ট" },

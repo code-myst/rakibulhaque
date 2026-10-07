@@ -27,7 +27,11 @@ import {
   getDocs,
 } from "firebase/firestore";
 import {
+  Banknote,
+  Loader2,
+  Check,
   Crown,
+  Hourglass,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -35,6 +39,7 @@ import {
   Trash2,
   UserPlus,
   UsersRound,
+  X,
 } from "lucide-react";
 import { db, firebaseConfig } from "@/lib/firebase";
 import { generatePartnerId } from "@/lib/users";
@@ -146,6 +151,7 @@ export default function AdminPartnersPage() {
   const [editing, setEditing] = React.useState<AppUser | null>(null);
   const [deleting, setDeleting] = React.useState<AppUser | null>(null);
   const [busy, setBusy] = React.useState(false);
+  const [busyId, setBusyId] = React.useState<string | null>(null);
 
   const partners = users
     .filter((u) => u.role === "partner")
@@ -276,8 +282,81 @@ export default function AdminPartnersPage() {
     }
   };
 
+  const pendingPartners = users.filter((u) => u.role === "partner" && u.status === "pending");
+
+  const onApprove = async (p: AppUser) => {
+    setBusyId(p.uid);
+    try {
+      await updateDoc(doc(db, "users", p.uid), { status: "active" });
+      toast({
+        title: "পার্টনার অ্যাপ্রুভ ✅",
+        description: `${p.name} (${p.partnerId}) — এখন ড্যাশবোর্ড ও রেফারেল লিংক ব্যবহার করতে পারবে।`,
+      });
+    } catch {
+      toast({ variant: "destructive", title: "অ্যাপ্রুভ ব্যর্থ" });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   return (
     <div className="space-y-5">
+      {/* ── Pending approvals ── */}
+      {pendingPartners.length > 0 && (
+        <Card className="border-amber-500/30 p-0">
+          <div className="flex items-center gap-2 border-b border-amber-500/20 bg-amber-500/10 p-4">
+            <Hourglass className="h-4 w-4 text-amber-400" />
+            <h2 className="text-sm font-bold text-amber-200">অপেন্ডিং অ্যাপ্রুভাল</h2>
+            <Badge variant="warning" className="ml-auto">{pendingPartners.length} জন</Badge>
+          </div>
+          <div className="divide-y divide-white/5">
+            {pendingPartners.map((p) => (
+              <div key={p.uid} className="flex flex-wrap items-center gap-3 p-4">
+                <div className="min-w-0 flex-1">
+                  <p className="flex items-center gap-2 font-medium">
+                    {p.name}
+                    <code className="rounded-md border border-violet-500/30 bg-violet-500/10 px-1.5 py-0.5 font-mono text-xs text-violet-300">
+                      {p.partnerId}
+                    </code>
+                  </p>
+                  <p className="text-xs text-muted-foreground">{p.phone || p.email || "—"}</p>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <Banknote className="h-4 w-4 text-emerald-400" />
+                  {p.paymentNumber ? (
+                    <span>
+                      <Badge variant="secondary">{p.paymentMethod}</Badge>{" "}
+                      <span className="font-mono">{p.paymentNumber}</span>
+                    </span>
+                  ) : (
+                    <span className="text-xs text-amber-300">পেমেন্ট নম্বর দেয়নি</span>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="success"
+                    disabled={busyId === p.uid}
+                    onClick={() => onApprove(p)}
+                  >
+                    {busyId === p.uid ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                    অ্যাপ্রুভ
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    disabled={busyId === p.uid}
+                    onClick={() => setDeleting(p)}
+                  >
+                    <X className="h-4 w-4" /> রিজেক্ট
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-extrabold tracking-tight sm:text-2xl">পার্টনারস</h1>

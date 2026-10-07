@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { Providers } from "./providers";
 import { Toaster } from "@/components/ui/toaster";
+import { PwaRegister } from "@/components/pwa-register";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -17,11 +18,14 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   title: {
-    default: "RHB Partner Portal",
-    template: "%s · RHB Partner Portal",
+    default: "Rakibul Haque — Web, Apps & AI · CODEMYST",
+    template: "%s · RHB Portal",
   },
   description:
-    "Partner affiliation portal & admin dashboard for Rakibul Haque Bhuiyan — track referrals, commissions and withdrawals.",
+    "Portfolio, dynamic pricing & partner portal of Rakibul Haque Bhuiyan — websites, mobile/desktop apps, AI automation & agents.",
+  manifest: "/manifest.json",
+  icons: { icon: "/icon.svg" },
+  appleWebApp: { capable: true, title: "RHB Portal", statusBarStyle: "black-translucent" },
 };
 
 export const viewport: Viewport = {
@@ -42,6 +46,7 @@ export default function RootLayout({
       >
         <Providers>{children}</Providers>
         <Toaster />
+        <PwaRegister />
       </body>
     </html>
   );

@@ -13,6 +13,7 @@ import {
   BadgeCheck,
   Check,
   Code2,
+  Flame,
   Loader2,
   MessageCircle,
   ShieldCheck,
@@ -21,9 +22,10 @@ import {
 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { subscribePackages } from "@/lib/packages";
+import { subscribeCategories } from "@/lib/categories";
 import { fetchPublicSettings } from "@/lib/settings";
-import { PACKAGE_CATEGORIES, type PricingPackage } from "@/lib/types";
-import { formatPrice } from "@/lib/utils";
+import type { PricingCategory, PricingPackage } from "@/lib/types";
+import { formatBDT, formatPrice } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,72 +52,87 @@ const orderSchema = z.object({
 });
 type OrderValues = z.infer<typeof orderSchema>;
 
-function PriceLabel({ pkg }: { pkg: PricingPackage }) {
-  if (pkg.priceType === "quote")
-    return (
-      <span className="text-2xl font-extrabold text-violet-300">
-        কোটেশন <span className="text-sm font-normal text-muted-foreground">· ৳{pkg.price}+ থেকে</span>
-      </span>
-    );
+/** Hostinger-স্টাইল দাম: স্ট্রাইকথ্রু + Save ব্যাজ */
+function PriceBlock({ pkg, big }: { pkg: PricingPackage; big?: boolean }) {
+  const saving =
+    pkg.originalPrice && pkg.price && pkg.originalPrice > pkg.price
+      ? pkg.originalPrice - pkg.price
+      : null;
   return (
-    <span className="text-3xl font-extrabold tracking-tight">
-      {formatPrice(pkg.price, pkg.priceType)}
-      {pkg.priceType === "monthly" && (
-        <span className="ml-1 text-sm font-normal text-muted-foreground">প্রতি মাস</span>
+    <div>
+      <div className="flex flex-wrap items-baseline gap-2">
+        {saving && (
+          <span className="text-sm text-muted-foreground line-through">
+            {formatBDT(pkg.originalPrice!)}
+          </span>
+        )}
+        <span className={big ? "text-4xl font-extrabold tracking-tight" : "text-3xl font-extrabold tracking-tight"}>
+          {formatPrice(pkg.price, pkg.priceType)}
+        </span>
+        {pkg.priceType === "monthly" && (
+          <span className="text-sm font-normal text-muted-foreground">প্রতি মাস</span>
+        )}
+      </div>
+      {saving && (
+        <Badge variant="success" className="mt-1.5">
+          Save {formatBDT(saving)}
+        </Badge>
       )}
-    </span>
+      {pkg.priceType === "quote" && pkg.price != null && (
+        <p className="mt-1 text-xs text-muted-foreground">স্কোপ অনুযায়ী ফাইনাল কোটেশন</p>
+      )}
+      {pkg.delivery && (
+        <p className="mt-1.5 flex items-center gap-1 text-xs text-emerald-400">
+          <Zap className="h-3 w-3" /> {pkg.delivery}
+        </p>
+      )}
+    </div>
   );
 }
 
 function PricingPageInner() {
   const searchParams = useSearchParams();
+  const initialCategory = searchParams.get("category") ?? "";
   const ref = (searchParams.get("ref") ?? "").toUpperCase();
   const validRef = /^CM-\d{3,}$/.test(ref) ? ref : null;
 
   const [packages, setPackages] = React.useState<PricingPackage[] | null>(null);
+  const [categories, setCategories] = React.useState<PricingCategory[]>([]);
+  const [tab, setTab] = React.useState(initialCategory);
   const [whatsapp, setWhatsapp] = React.useState("");
   const [rules, setRules] = React.useState<string[]>([]);
-  const [tab, setTab] = React.useState("all");
   const [ordering, setOrdering] = React.useState<PricingPackage | null>(null);
   const [ordered, setOrdered] = React.useState<PricingPackage | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
   const { toast } = useToast();
 
   React.useEffect(() => {
-    const unsub = subscribePackages((pkgs) => setPackages(pkgs.filter((p) => p.active)));
-    return unsub;
-  }, []);
-
-  React.useEffect(() => {
+    const unsubs = [
+      subscribePackages((pkgs) => setPackages(pkgs.filter((p) => p.active))),
+      subscribeCategories(setCategories),
+    ];
     fetchPublicSettings().then((s) => {
       setWhatsapp(s.whatsappNumber);
       setRules(s.pricingRules ?? []);
     });
+    return () => unsubs.forEach((u) => u());
   }, []);
+
+  React.useEffect(() => {
+    if (categories.length && !categories.some((c) => c.key === tab)) {
+      setTab(categories[0].key);
+    }
+  }, [categories, tab]);
 
   const form = useForm<OrderValues>({
     resolver: zodResolver(orderSchema),
     defaultValues: { name: "", phone: "", note: "" },
   });
 
-  const activeCategories = PACKAGE_CATEGORIES.filter((c) =>
+  const activeCategories = categories.filter((c) =>
     (packages ?? []).some((p) => p.category === c.key)
   );
-  // "সব" ট্যাবে ক্যাটাগরি-ওয়াইজ আলাদা সেকশন; নির্দিষ্ট ট্যাবে শুধু সেটাই
-  const sections =
-    tab === "all"
-      ? activeCategories.map((c) => ({
-          key: c.key,
-          label: c.label,
-          items: (packages ?? []).filter((p) => p.category === c.key),
-        }))
-      : activeCategories
-          .filter((c) => c.key === tab)
-          .map((c) => ({
-            key: c.key,
-            label: c.label,
-            items: (packages ?? []).filter((p) => p.category === c.key),
-          }));
+  const shown = (packages ?? []).filter((p) => p.category === tab);
 
   const onSubmit = async (values: OrderValues) => {
     if (!ordering) return;
@@ -161,17 +178,17 @@ function PricingPageInner() {
       {/* Header */}
       <header className="sticky top-0 z-30 border-b border-white/10 bg-background/70 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/20 ring-1 ring-primary/40">
               <Code2 className="h-5 w-5 text-violet-300" />
             </div>
             <div>
               <p className="text-sm font-bold tracking-tight">Rakibul Haque</p>
               <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                Web Developer · CODEMYST
+                Web · Apps · AI — CODEMYST
               </p>
             </div>
-          </div>
+          </Link>
           <div className="flex items-center gap-2">
             {validRef && (
               <Badge variant="success" className="hidden gap-1 sm:inline-flex">
@@ -179,12 +196,7 @@ function PricingPageInner() {
               </Badge>
             )}
             <Button asChild variant="outline" size="sm">
-              <a
-                href={whatsapp ? waLink(null) : "#"}
-                target="_blank"
-                rel="noreferrer"
-                className="gap-1.5"
-              >
+              <a href={whatsapp ? waLink(null) : "#"} target="_blank" rel="noreferrer" className="gap-1.5">
                 <MessageCircle className="h-4 w-4 text-emerald-400" />
                 WhatsApp
               </a>
@@ -194,22 +206,18 @@ function PricingPageInner() {
       </header>
 
       {/* Hero */}
-      <section className="mx-auto max-w-6xl px-4 pb-8 pt-12 text-center sm:px-6">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
+      <section className="mx-auto max-w-6xl px-4 pb-6 pt-12 text-center sm:px-6">
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
           <div className="mx-auto mb-4 inline-flex items-center gap-1.5 rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs text-violet-300">
             <Sparkles className="h-3.5 w-3.5" />
             শুরুতেই একটা সাইট একদম ফ্রি
           </div>
           <h1 className="text-gradient mx-auto max-w-3xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl">
-            আপনার ব্যবসার জন্য প্রফেশনাল ওয়েবসাইট
+            আপনার ব্যবসার জন্য সঠিক প্ল্যানটি বেছে নিন
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-            ছোট ব্যবসা, দোকান, কোচিং, ব্লগ, কোর্স সাইট — সব বানানো হয়। সাধ্যের মধ্যে দাম,
-            দ্রুত ডেলিভারি। পছন্দের প্যাকেজ বেছে অর্ডার করুন — আমরা কল দিয়ে বাকি সব সাজিয়ে নেব।
+            ওয়েবসাইট, মোবাইল অ্যাপ, AI অটোমেশন — ক্যাটাগরি বেছে নিন, প্যাকেজ বাছুন, অর্ডার করুন।
+            খুব দ্রুত আমরা যোগাযোগ করব।
           </p>
           {validRef && (
             <p className="mt-3 text-xs text-emerald-400">
@@ -220,114 +228,95 @@ function PricingPageInner() {
         </motion.div>
       </section>
 
-      {/* Category tabs */}
+      {/* Category tabs (All নেই — ক্যাটাগরিগুলোই) */}
       {activeCategories.length > 0 && (
-        <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <Tabs value={tab} onValueChange={setTab}>
-            <TabsList className="h-auto flex-wrap justify-start gap-1">
-              <TabsTrigger value="all">সব</TabsTrigger>
-              {activeCategories.map((c) => (
-                <TabsTrigger key={c.key} value={c.key}>
-                  {c.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+        <div className="sticky top-[57px] z-20 border-y border-white/5 bg-background/70 backdrop-blur-xl">
+          <div className="mx-auto max-w-6xl px-4 py-2 sm:px-6">
+            <Tabs value={tab} onValueChange={setTab}>
+              <TabsList className="h-auto w-full flex-wrap justify-start gap-1 bg-transparent p-0">
+                {activeCategories.map((c) => (
+                  <TabsTrigger key={c.key} value={c.key}>
+                    {c.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+          </div>
         </div>
       )}
 
-      {/* Packages */}
-      <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      {/* Packages — Hostinger-style grid */}
+      <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
         {packages === null ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
               <Skeleton key={i} className="h-64 w-full rounded-xl" />
             ))}
           </div>
-        ) : (packages ?? []).length === 0 ? (
+        ) : shown.length === 0 ? (
           <p className="py-16 text-center text-sm text-muted-foreground">
-            শীঘ্রই প্যাকেজ যোগ করা হবে। এখনই WhatsApp-এ যোগাযোগ করুন।
+            শীঘ্রই এই ক্যাটাগরিতে প্যাকেজ যোগ হবে। এখনই WhatsApp-এ যোগাযোগ করুন।
           </p>
         ) : (
-          /* ক্যাটাগরি-ওয়াইজ আলাদা সেকশন — মাঝে পর্যাপ্ত ফাঁকা */
-          <div className="space-y-14 sm:space-y-16">
-            {sections.map((section) => (
-              <div key={section.key}>
-                <div className="mb-5 flex items-center gap-3">
-                  <h2 className="text-lg font-bold tracking-tight sm:text-xl">
-                    {section.label}
-                  </h2>
-                  <span className="h-px flex-1 bg-white/10" />
-                  <span className="text-xs text-muted-foreground">
-                    {section.items.length} টি প্ল্যান
-                  </span>
-                </div>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  {section.items.map((pkg, i) => (
-                    <motion.div
-                      key={pkg.id}
-                      initial={{ opacity: 0, y: 16 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true, margin: "-40px" }}
-                      transition={{ duration: 0.35, delay: Math.min(i * 0.05, 0.3) }}
-                      whileHover={{ y: -4 }}
-                      className="h-full"
+          <div className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {shown
+              .slice()
+              .sort((a, b) => Number(!!b.popular) - Number(!!a.popular))
+              .map((pkg, i) => (
+                <motion.div
+                  key={pkg.id}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35, delay: Math.min(i * 0.06, 0.35) }}
+                  whileHover={{ y: -5 }}
+                  className={`h-full ${pkg.popular ? "md:-my-2 md:py-2" : ""}`}
+                >
+                  <Card
+                    className={`glass-hover relative flex h-full flex-col p-6 ${
+                      pkg.popular
+                        ? "border-2 border-violet-500/60 shadow-[0_0_50px_-12px_hsl(258_90%_66%/0.5)]"
+                        : ""
+                    }`}
+                  >
+                    {pkg.popular && (
+                      <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+                        <Badge className="gap-1 border-violet-400/50 bg-violet-600 px-3 py-1 shadow-lg">
+                          <Flame className="h-3 w-3" /> সবচেয়ে জনপ্রিয়
+                        </Badge>
+                      </div>
+                    )}
+                    <h3 className="text-lg font-bold">{pkg.name}</h3>
+                    <div className="mt-3">
+                      <PriceBlock pkg={pkg} big={pkg.popular} />
+                    </div>
+                    <ul className="mt-4 flex-1 space-y-2.5 text-sm leading-relaxed text-muted-foreground">
+                      {pkg.features.map((f, j) => (
+                        <li key={j} className="flex gap-2">
+                          <Check className="mt-0.5 h-4 w-4 shrink-0 text-violet-400" />
+                          {f}
+                        </li>
+                      ))}
+                    </ul>
+                    {pkg.note && (
+                      <p className="mt-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-muted-foreground">
+                        {pkg.note}
+                      </p>
+                    )}
+                    <Button
+                      className="mt-5 w-full"
+                      size={pkg.popular ? "lg" : "default"}
+                      variant={pkg.popular ? "default" : "outline"}
+                      onClick={() => setOrdering(pkg)}
                     >
-                      <Card
-                        className={`glass-hover card-sheen flex h-full flex-col p-6 ${
-                          pkg.popular
-                            ? "border-violet-500/40 shadow-[0_0_40px_-12px_hsl(258_90%_66%/0.4)]"
-                            : ""
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <h3 className="text-lg font-bold">{pkg.name}</h3>
-                          </div>
-                          {pkg.popular && <Badge>🔥 জনপ্রিয়</Badge>}
-                        </div>
-
-                        <div className="mt-3">
-                          <PriceLabel pkg={pkg} />
-                          {pkg.delivery && (
-                            <p className="mt-1 flex items-center gap-1 text-xs text-emerald-400">
-                              <Zap className="h-3 w-3" /> {pkg.delivery}
-                            </p>
-                          )}
-                        </div>
-
-                        <ul className="mt-4 flex-1 space-y-2 text-sm leading-relaxed text-muted-foreground">
-                          {pkg.features.map((f, j) => (
-                            <li key={j} className="flex gap-2">
-                              <Check className="mt-0.5 h-4 w-4 shrink-0 text-violet-400" />
-                              {f}
-                            </li>
-                          ))}
-                        </ul>
-
-                        {pkg.note && (
-                          <p className="mt-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-muted-foreground">
-                            {pkg.note}
-                          </p>
-                        )}
-
-                        <Button
-                          className="mt-5 w-full"
-                          variant={pkg.popular ? "default" : "outline"}
-                          onClick={() => setOrdering(pkg)}
-                        >
-                          {pkg.price === 0
-                            ? "ফ্রি নিন"
-                            : pkg.priceType === "quote"
-                              ? "কোটেশন চাই"
-                              : "অর্ডার করুন"}
-                        </Button>
-                      </Card>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-            ))}
+                      {pkg.price === 0
+                        ? "ফ্রি নিন"
+                        : pkg.priceType === "quote"
+                          ? "কোটেশন চাই"
+                          : "অর্ডার করুন"}
+                    </Button>
+                  </Card>
+                </motion.div>
+              ))}
           </div>
         )}
       </section>
@@ -347,7 +336,7 @@ function PricingPageInner() {
             ))}
           </ul>
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4 text-xs text-muted-foreground">
-            <p>© {new Date().getFullYear()} Rakibul Haque Bhuiyan · Web Developer · CODEMYST</p>
+            <p>© {new Date().getFullYear()} Rakibul Haque Bhuiyan · Web · Apps · AI — CODEMYST</p>
             <Link href="/login" className="underline-offset-4 hover:underline">
               Partner Portal
             </Link>
@@ -383,7 +372,7 @@ function PricingPageInner() {
                   )}
                 </div>
                 <div className="space-y-1.5">
-                  <Label>কী ধরনের সাইট দরকার? (ঐচ্ছিক)</Label>
+                  <Label>কী দরকার? (ঐচ্ছিক)</Label>
                   <textarea
                     rows={3}
                     className="flex w-full rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70"

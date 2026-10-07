@@ -1,0 +1,41 @@
+{
+  "name": "RHB Partner Portal — CODEMYST",
+  "short_name": "RHB Portal",
+  "description": "Partner affiliation portal & business dashboard for Rakibul Haque Bhuiyan (CODEMYST) — pricing, orders, commissions & portfolio.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0f",
+  "theme_color": "#0a0a0f",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Partner Dashboard",
+      "url": "/partner",
+      "description": "Partner dashboard"
+    },
+    {
+      "name": "Admin",
+      "url": "/admin",
+      "description": "Business dashboard"
+    },
+    {
+      "name": "Pricing",
+      "url": "/pricing",
+      "description": "Public pricing & orders"
+    }
+  ]
+}

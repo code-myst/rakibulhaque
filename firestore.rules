@@ -48,7 +48,13 @@ service cloud.firestore {
                         && request.resource.data.balance == resource.data.balance
                         && request.resource.data.totalEarnings == resource.data.totalEarnings
                         && request.resource.data.commissionRate == resource.data.commissionRate
-                        && request.resource.data.status == resource.data.status);
+                        && request.resource.data.status == resource.data.status)
+                    // Pending partner: শুধু নিজের payment info জমা দিতে পারবে
+                    || (isSelf(uid)
+                        && resource.data.status == 'pending'
+                        && request.resource.data.status == 'pending'
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                           .hasOnly(['paymentMethod', 'paymentNumber']));
       allow delete: if isAdmin();
     }
 
@@ -124,8 +130,8 @@ service cloud.firestore {
 
     // ------------------------------------------------------------ settings
     match /settings/{docId} {
-      // `public` doc powers the public pricing page (WhatsApp etc.)
-      allow read: if docId == 'public' || isSignedIn();
+      // categories doc powers the public pricing page — all settings readable
+      allow read: if true;
       allow write: if isAdmin();
     }
 

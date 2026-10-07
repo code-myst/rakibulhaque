@@ -52,6 +52,11 @@ const mapClient = (id: string, d: Record<string, unknown>): Client => ({
   referredBy: (d.referredBy as string) ?? "",
   status: (d.status as Client["status"]) ?? "pending",
   createdAt: (d.createdAt as { toMillis?: () => number })?.toMillis?.() ?? 0,
+  source: (d.source as Client["source"]) ?? "admin",
+  isFree: !!d.isFree,
+  followUps: (d.followUps as Client["followUps"]) ?? [],
+  commissionRate: (d.commissionRate as number | null) ?? null,
+  note: (d.note as string) ?? "",
 });
 
 const mapWithdrawal = (id: string, d: Record<string, unknown>): Withdrawal => ({
@@ -75,6 +80,8 @@ const mapUser = (id: string, d: Record<string, unknown>): AppUser => ({
   status: (d.status as AppUser["status"]) ?? "pending",
   balance: (d.balance as number) ?? 0,
   totalEarnings: (d.totalEarnings as number) ?? 0,
+  paymentMethod: (d.paymentMethod as AppUser["paymentMethod"]) ?? "",
+  paymentNumber: (d.paymentNumber as string) ?? "",
   createdAt: (d.createdAt as { toMillis?: () => number })?.toMillis?.() ?? undefined,
 });
 
