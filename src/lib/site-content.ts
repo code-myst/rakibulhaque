@@ -368,20 +368,38 @@ export function subscribeMyRecommendations(uid: string, cb: (recs: Recommendatio
   );
 }
 
-/** অ্যাডমিন সাইড: ক্লায়েন্টের email দিয়ে সাইট অ্যাকাউন্ট খুঁজে অর্ডার স্ট্যাটাস মিরর আপডেট */
+/**
+ * অ্যাডমিন সাইড: অর্ডারের status সাইট অ্যাকাউন্টে (প্রোফাইলে) মিরর করে।
+ * খোঁজার ক্রম: client.siteUserId (সরাসরি) → client.siteEmail → client.email।
+ * Returns: { ok, reason? } — reason দিয়ে UI-তে সমস্যা দেখানো যায়।
+ */
 export async function syncOrderStatusToSiteAccount(
-  client: { id: string; email?: string; name?: string; package?: string; amount?: number; referredBy?: string },
+  client: {
+    id: string;
+    siteUserId?: string;
+    siteEmail?: string;
+    email?: string;
+    name?: string;
+    package?: string;
+    amount?: number;
+    referredBy?: string;
+  },
   status: "pending" | "working" | "paid"
-) {
-  if (!siteAuth.currentUser) return; // সাইট প্রজেক্টে অ্যাডমিন লগইন না থাকলে স্কিপ
-  const email = client.email?.trim();
-  if (!email) return;
+): Promise<{ ok: boolean; reason?: string }> {
+  if (!siteAuth.currentUser) {
+    return { ok: false, reason: "not-logged-in" };
+  }
   try {
-    const userSnaps = await getDocs(
-      query(collection(siteDb, "users"), where("email", "==", email))
-    );
-    if (userSnaps.empty) return;
-    const uid = userSnaps.docs[0].id;
+    let uid = client.siteUserId || "";
+    if (!uid) {
+      const email = (client.siteEmail ?? client.email)?.trim();
+      if (!email) return { ok: false, reason: "no-link" };
+      const userSnaps = await getDocs(
+        query(collection(siteDb, "users"), where("email", "==", email))
+      );
+      if (userSnaps.empty) return { ok: false, reason: "account-not-found" };
+      uid = userSnaps.docs[0].id;
+    }
     const userRef = doc(siteDb, "users", uid);
     // পুরনো ভাঙা অ্যাকাউন্ট heal — visitor থাকলে client করে দাও (admin users write ✓)
     const roleSnap = await getDoc(userRef);
@@ -400,7 +418,13 @@ export async function syncOrderStatusToSiteAccount(
       },
       { merge: true }
     );
+    return { ok: true };
   } catch (e) {
-    console.error("order status sync failed (non-blocking):", e);
+    const code = (e as { code?: string })?.code ?? "";
+    console.error("order status sync failed:", e);
+    if (code.includes("permission-denied")) {
+      return { ok: false, reason: "not-admin" };
+    }
+    return { ok: false, reason: "error" };
   }
 }

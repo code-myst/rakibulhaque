@@ -4,6 +4,7 @@ import * as z from "zod";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as React from "react";
+import Link from "next/link";
 import {
   addDoc,
   arrayUnion,
@@ -32,6 +33,7 @@ import {
 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { syncOrderStatusToSiteAccount } from "@/lib/site-content";
+import { useSiteAuth } from "@/hooks/use-site-auth";
 import { useAllClients, useAllUsers } from "@/hooks/use-firestore-data";
 import type { Client, ClientStatus } from "@/lib/types";
 import { formatBDT, formatDate } from "@/lib/utils";
@@ -128,10 +130,35 @@ const STATUS_META: Record<
 
 type ClientTab = "all" | "orders" | "leads";
 
+
+/** অর্ডারের status ক্লায়েন্টের সাইট প্রোফাইলে মিরর — ব্যর্থ হলে কারণ জানায় */
+async function mirrorSync(
+  client: Client,
+  status: "pending" | "working" | "paid",
+  toast: ReturnType<typeof useToast>["toast"]
+) {
+  const res = await syncOrderStatusToSiteAccount(client, status);
+  if (!res.ok) {
+    const reasons: Record<string, string> = {
+      "not-logged-in": "সাইট প্রজেক্টে (rakibul-haque) লগইন নেই — জেনারেল → যেকোনো পেজে একবার লগইন করুন।",
+      "not-admin": "সাইট প্রজেক্টে আপনার role 'admin' নেই — সেই প্রজেক্টের users/{আপনার-uid}-এ role দিন।",
+      "account-not-found": "এই ইমেইলে সাইট অ্যাকাউন্ট পাওয়া যায়নি।",
+      "no-link": "এই পুরনো অর্ডারটি কোনো অ্যাকাউন্টের সাথে লিংক করা নেই।",
+      error: "সিঙ্ক ব্যর্থ — console দেখুন।",
+    };
+    toast({
+      variant: "destructive",
+      title: "প্রোফাইল সিঙ্ক হয়নি",
+      description: reasons[res.reason ?? "error"],
+    });
+  }
+}
+
 export default function AdminClientsPage() {
   const { data: clients, loading } = useAllClients();
   const { data: users } = useAllUsers();
   const { toast } = useToast();
+  const { siteUser } = useSiteAuth();
   const [tab, setTab] = React.useState<ClientTab>("all");
   const [search, setSearch] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<"all" | ClientStatus>("all");
@@ -278,7 +305,7 @@ export default function AdminClientsPage() {
         await runTransaction(db, async (tx) => {
           tx.update(doc(db, "clients", client.id), { status: next });
         });
-        syncOrderStatusToSiteAccount(client, next).catch(() => undefined);
+        await mirrorSync(client, next, toast);
         toast({
           title: "স্ট্যাটাস আপডেট",
           description:
@@ -319,7 +346,7 @@ export default function AdminClientsPage() {
         return earned;
       });
 
-      syncOrderStatusToSiteAccount(client, "paid").catch(() => undefined);
+      await mirrorSync(client, "paid", toast);
       if (commission > 0) {
         toast({
           title: "পেমেন্ট সম্পন্ন ✅",
@@ -352,7 +379,7 @@ export default function AdminClientsPage() {
             status: "paid",
             isFree: false,
           });
-          syncOrderStatusToSiteAccount(client, "paid").catch(() => undefined);
+          await mirrorSync(client, "paid", toast);
           toast({ title: "কনভার্ট সম্পন্ন ✅", description: `${client.name} → Paid (DIRECT, কমিশন নেই)` });
         } else {
           const partner = partnerByPid.get(client.referredBy);
@@ -388,7 +415,7 @@ export default function AdminClientsPage() {
           status: "working",
           isFree: false,
         });
-        syncOrderStatusToSiteAccount(client, "working").catch(() => undefined);
+        await mirrorSync(client, "working", toast);
         toast({ title: "কনভার্ট হয়েছে ✅", description: `${client.name} → Working (${formatBDT(amount)}) — পেমেন্ট নিলে Paid করুন।` });
       }
       syncOrderStatusToSiteAccount(
@@ -439,6 +466,16 @@ export default function AdminClientsPage() {
           <Plus className="h-4 w-4" /> ক্লায়েন্ট যোগ করুন
         </Button>
       </div>
+
+      {!siteUser && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+          ⚠️ প্রোফাইল সিঙ্ক বন্ধ — সাইট প্রজেক্টে (rakibul-haque) লগইন নেই।{" "}
+          <Link href="/admin/site" className="font-semibold underline">
+            জেনারেল → সাইট কনটেন্ট
+          </Link>{" "}
+          পেজে একবার লগইন করলেই অর্ডার status ক্লায়েন্টের প্রোফাইলে যেতে থাকবে।
+        </div>
+      )}
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as ClientTab)}>
         <TabsList className="h-auto flex-wrap">
