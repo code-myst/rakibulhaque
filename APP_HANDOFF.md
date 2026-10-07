@@ -1,36 +1,42 @@
-# 📱 RHB / CODEMYST — Mobile App Handoff Document
+# 📱 RHB / CODEMYST — Mobile App Handoff Document (v2)
 
 > **কীভাবে ব্যবহার করবেন:** এই ফাইলটা (পুরোটা) যেকোনো AI বা ডেভেলপারকে দিন এবং বলুন —
-> "এই স্পেক অনুযায়ী আমার মোবাইল অ্যাপ বানাও"। এখানে অ্যাপ বানানোর জন্য দরকারি সব কিছু আছে:
-> দুইটা Firebase প্রজেক্টের কনফিগ, পুরো ডেটাবেস স্কিমা, ফিচার তালিকা, ডিজাইন টোকেন ও নিয়ম।
+> "এই স্পেক অনুযায়ী আমার মোবাইল অ্যাপ বানাও"। এখানে দরকারি সব কিছু আছে: দুইটা Firebase
+> প্রজেক্টের কনফিগ, সম্পূর্ণ ডেটাবেস স্কিমা, ফিচার স্পেক, বিজনেস লজিক, ডিজাইন টোকেন ও নিয়ম।
+>
+> **লক্ষ্য:** এমন অ্যাপ যেটা দিয়ে (১) Rakib (Admin) নিজের পুরো ব্যবসা চালাতে পারবে এবং
+> (২) তার Partner-রা নিজেদের প্যানেল মোবাইল থেকেই চালাতে পারবে — push notification সহ।
 
 ---
 
-## ১. প্রজেক্ট ওভারভিউ
+## ১. ব্যবহারকারী ও অ্যাপের ধরন
 
-Rakibul Haque Bhuiyan (Web Developer, CEO of **CODEMYST**) এর জন্য একটি **Partner Portal + Business Admin** সিস্টেম ওয়েবে চলছে (Next.js 14, Vercel-এ ডিপ্লয়ড)। এবার এর **মোবাইল অ্যাপ** (Android প্রথমে, পরে iOS) বানাতে হবে — push notification সহ, যাতে ব্যবসা মোবাইল থেকেই চালানো যায়।
+| Role | কোথায় লগইন | অ্যাপে যা করবে |
+|---|---|---|
+| **Admin** (Rakib) | partner-affiliation project (Email/Password) | অর্ডার কন্ট্রোল (status: pending→working→paid = কমিশন ক্রেডিট), পার্টনার approve/reject, উইথড্র approve/reject, প্রাইসিং/সার্ভিস এডিট, নতুন অর্ডার/মেসেজ/উইথড্রে push |
+| **Partner** (অ্যাফিলিয়েট) | একই project (Email/Password বা ফোন → synthetic email) | ব্যালান্স/আয়, নিজের ক্লায়েন্ট, উইথড্র রিকোয়েস্ট, রেফারেল লিংক শেয়ার, অ্যাপ্রুভাল নোটিফিকেশন |
 
-**দুই ধরনের ব্যবহারকারী:**
+⚠️ **পেন্ডিং পার্টনার:** নতুন রেজিস্ট্রেশনে `status: "pending"` — admin approve না করা পর্যন্ত
+dashboard ব্লক থাকবে (অ্যাপে "অপেক্ষা করুন" স্ক্রিন দেখাবে)। `partnerId` খালি থাকলে
+approve-এর সময় admin বরাদ্দ করে (`CM-XXX`)।
 
-| Role | কাজ |
-|---|---|
-| **Admin** (Rakib নিজে) | অর্ডার কন্ট্রোল, পার্টনার approve/reject, উইথড্র অ্যাপ্রুভ, প্রাইসিং এডিট, নতুন অর্ডার/মেসেজে push নোটিফিকেশন |
-| **Partner** (অ্যাফিলিয়েট) | নিজের ব্যালান্স/আয় দেখা, নিজের ক্লায়েন্ট ট্র্যাক, উইথড্র রিকোয়েস্ট, রেফারেল লিংক শেয়ার, অ্যাপ্রুভাল নোটিফিকেশন |
+⚠️ **সাইটের ভিজিটর/ক্লায়েন্ট অ্যাকাউন্ট** (project B) অ্যাপের এই স্পেকে শুধু রেফারেন্স —
+অ্যাপে দরকার হলে নতুন অর্ডারের পুশ-ট্রিগারে ব্যবহার হবে।
 
 ---
 
 ## ২. সাজেস্টেড স্ট্যাক
 
-- **Expo (React Native)** — রেকমেন্ডেড: Firebase JS SDK সরাসরি কাজ করে, OTA update, দ্রুত বিল্ড
-- Push: **Firebase Cloud Messaging (FCM)** + `expo-notifications` (Android), iOS-এ APNs key লাগবে
-- State: React Query + Firestore `onSnapshot` (রিয়েল-টাইম)
-- Language: TypeScript (ওয়েবের মতোই)
+- **Expo (React Native) + TypeScript** — Firebase JS SDK সরাসরি চলে, OTA update, দ্রুত বিল্ড
+- **Push:** `expo-notifications` + **Firebase Cloud Messaging (FCM v1)** (Android আগে; iOS-এ APNs key)
+- **Data:** Firestore `onSnapshot` (রিয়েল-টাইম) — ওয়েবের মতোই
+- **Status sync trigger:** Firebase Cloud Functions (project A) — নিচে §৮
 
 ---
 
 ## ৩. Firebase প্রজেক্ট (২টা)
 
-### A) বিজনেস/পার্টনার ডেটা — project `partner-affiliation`
+### A) বিজনেস/পার্টনার — project `partner-affiliation` (অ্যাপের মূল)
 
 ```js
 const firebaseConfig = {
@@ -43,10 +49,10 @@ const firebaseConfig = {
   measurementId: "G-C2TNJB6Z8D",
 };
 ```
-Sign-in providers চালু: Email/Password, Google।
-Auth নিয়ম: পার্টনার ফোন দিয়ে লগইন করলে সিনথেটিক ইমেইল হয় `{phone}@rhb.partners`।
+Providers চালু: Email/Password, Google।
+**লগইন কনভেনশন:** পার্টনার ফোন দিয়ে লগইন করলে synthetic email `{phone}@rhb.partners` হয়।
 
-### B) সাইট কনটেন্ট/মেসেজ — project `rakibul-haque`
+### B) সাইট/ক্লায়েন্ট — project `rakibul-haque` (শুধু রেফারেন্স)
 
 ```js
 const siteConfig = {
@@ -59,126 +65,195 @@ const siteConfig = {
   measurementId: "G-F4VWL5PN91",
 };
 ```
-Sign-in providers চালু: Email/Password, Phone, Google, Apple।
-অ্যাপে মূলত project A দরকার; B শুধু নতুন মেসেজ নোটিফিকেশনের জন্য।
 
 ---
 
-## ৪. Firestore স্কিমা (project A: partner-affiliation)
+## ৪. Firestore স্কিমা — project A (`partner-affiliation`)
 
 ### `users/{uid}`
 | ফিল্ড | টাইপ | নোট |
 |---|---|---|
 | name, phone, email | string | |
 | role | `"admin" \| "partner"` | |
-| partnerId | string | `"CM-005"` — অ্যাডমিনেরটা `"ADMIN"` |
-| commissionRate | number | ১৫ / ২০ (Gold = ৩+ পেইড অর্ডার) |
-| status | `"active" \| "pending" \| "banned"` | pending = dashboard ব্লক |
+| partnerId | string | `"CM-005"`; admin = `"ADMIN"`; **রেজিস্ট্রেশনে খালি `""`** (approve-এ বরাদ্দ) |
+| commissionRate | number | ১৫ (স্ট্যান্ডার্ড) / ২০ (Gold = ৩+ পেইড অর্ডার) / ১০ (রিপিট ক্লায়েন্ট কেস) |
+| status | `"active" \| "pending" \| "banned"` | pending = প্যানেল ব্লক |
 | balance, totalEarnings | number | কমিশন (৳) |
 | paymentMethod | `"bKash" \| "Nagad" \| ""` | |
 | paymentNumber | string | |
+| createdAt | Timestamp | |
 
-### `clients/{id}`
+### `clients/{id}` — অর্ডার/ক্লায়েন্ট
 | ফিল্ড | টাইপ | নোট |
 |---|---|---|
 | name, phone | string | |
 | package | string | প্যাকেজের নাম |
 | amount | number | ৳; ০ = ফ্রি/কোটেশন লিড |
-| referredBy | string | `"CM-005"` বা `"DIRECT"` (ডিরেক্ট = কমিশন নেই) |
-| status | `"pending" \| "working" \| "paid"` | paid হলে কমিশন ক্রেডিট |
+| referredBy | string | `"CM-005"` বা `"DIRECT"` (DIRECT = কমিশন নেই, ১০০% admin) |
+| status | `"pending" \| "working" \| "paid"` | paid = কমিশন ক্রেডিট |
 | source | `"pricing" \| "admin"` | pricing = ওয়েবসাইট অর্ডার |
-| isFree | boolean | ফ্রি লিড |
-| followUps[] | `{at:number, note:string}` | লিড ফলো-আপ টাইমলাইন |
-| commissionRate | number\|null | null = পার্টনারের রেট (রিপিট ক্লায়েন্টে ১০ সেট করা হয়) |
+| isFree | boolean | |
+| followUps[] | `{at, note}` | লিড ফলো-আপ |
+| commissionRate | number\|null | null = পার্টনারের রেট; রিপিট ক্লায়েন্টে ১০ |
+| siteUserId, siteEmail | string | সাইট অ্যাকাউন্ট লিংক (project B uid) |
 | note | string | |
 | createdAt | Timestamp | |
 
-**কমিশন লজিক (অ্যাপে দেখানোর সময়):** paid হলে partner-এর `balance` ও `totalEarnings` += `amount × (client.commissionRate ?? partner.commissionRate) / 100`। DIRECT বা amount=০ হলে কমিশন নেই।
+**কমিশন লজিক (paid করার সময় transaction):**
+`earned = round(amount × (client.commissionRate ?? partner.commissionRate) / 100)`
+→ partner `balance` ও `totalEarnings` += earned। DIRECT বা amount=০ হলে কমিশন নেই।
 
 ### `withdrawals/{id}`
 partnerId, amount, method (`"bKash"|"Nagad"`), accountNumber, status (`"pending"|"approved"|"rejected"`), createdAt।
-Approved হলে admin panel transaction-এ partner-এর balance কেটে দেয়।
+**Approve = transaction:** status → approved এবং partner-এর `balance -= amount`।
 
-### `packages/{id}` (public read)
-category, categoryName, name, price (null = quote), priceType (`"fixed"|"from"|"quote"|"monthly"`), originalPrice?, features[], delivery?, note?, popular?, active, sortOrder।
+### `packages/{id}` — প্রাইসিং (public read)
+| ফিল্ড | নোট |
+|---|---|
+| category | **ক্যাটাগরির key — ক্যাটাগরি এখন সার্ভিসের অধীনে** (project B-র `site/content.services[].categories`) |
+| categoryName | ডিনরমালাইজড লেবেল |
+| name, price (null = quote), priceType (`"fixed"|"from"|"quote"|"monthly"`), originalPrice? | দাম; originalPrice থাকলে স্ট্রাইকথ্রু + "Save ৳X" |
+| features[] | বুলেট লিস্ট |
+| delivery?, note?, popular?, active, sortOrder | |
 
-### `settings/{doc}`
-- `global`: defaultCommissionRate, premiumCommissionRate, minWithdrawAmount, referralBaseUrl
-- `public`: whatsappNumber, supportEmail, announcementText, announcementEnabled, pricingRules[]
-- `categories`: list[] of `{key, label, sortOrder}` — pricing ট্যাব
+### `settings/…`
+- `global`: defaultCommissionRate (15), premiumCommissionRate (20), minWithdrawAmount (500), referralBaseUrl
+- `public`: whatsappNumber ("8801752845182"), supportEmail, announcementText, announcementEnabled, pricingRules[]
 
-### `content/resources`
-পার্টনার গাইডলাইন: sections[] `{key: "scripts"|"objections"|"rules", label, items[{title, lines[]}]}`
-
-### `settings` নয় — project B-তে (rakibul-haque)
-- `site/content`: পোর্টফোলিও কনটেন্ট (hero, about, services, contact — সব টেক্সট `{en, bn}`)
-- `blog/{id}`: slug, title{en,bn}, excerpt{en,bn}, content{en,bn}, cover?, tags[], published, createdAt
-- `messages/{id}`: name, email, visitorUid?, thread[{from:"visitor"|"admin", text, at}], status("new"|"read"|"replied")
-- `recommendations/{id}`: name, role, text, rating(1-5), status("pending"|"approved")
+⚠️ ক্যাটাগরি লিস্ট আর সার্ভিস এখন **project B-র `site/content`-এ** — অ্যাপে প্রাইসিং গ্রুপ করতে হলে ওখান থেকে পড়তে হবে (§৫)।
 
 ---
 
-## ৫. সিকিউরিটি রুলস
+## ৫. Firestore স্কিমা — project B (`rakibul-haque`)
 
-সম্পূর্ণ রুলস রিপোতে আছে: `firestore.rules` (project A) ও `firestore.site.rules` (project B)। মূল সারাংশ:
-- users: নিজের ডক পড়া যায়; pending পার্টনার শুধু নিজের payment ফিল্ড লিখতে পারে; money ফিল্ড শুধু admin
-- clients: admin সব; partner শুধু `referredBy == নিজের partnerId` পড়ে; public শুধু validated pricing-order create করতে পারে
-- withdrawals: partner নিজেরটা পড়ে + pending create; approve/reject শুধু admin
-- messages (site): guest create; ভিজিটর নিজের থ্রেড পড়ে; admin সব + reply
+### `site/content` (public read)
+```
+profile:  { name, photoUrl, badge{en,bn}, roles[{en,bn}], tagline{en,bn} }
+cta:      { primaryLabel{en,bn}, primaryHref, secondaryLabel{en,bn}, secondaryHref }
+about:    { title{en,bn}, paragraphs[{en,bn}], skills[{name, level, group}], languages[], stats[{value, label{en,bn}}] }
+services: [ { id, icon, title{en,bn}, description{en,bn}, features[{en,bn}],
+              categories: [ {key, label, sortOrder} ] } ]   ← প্রাইসিং ক্যাটাগরি এখানে
+projects: [ { id, title{en,bn}, description{en,bn}, image?, link?, tags[], featured } ]
+contact:  { email, phone, whatsapp, location{en,bn}, socials[{label,url}] }
+seo:      { title{en,bn}, description{en,bn} }
+```
+**প্রাইসিং গ্রুপিং:** service.categories[].key = `packages.category` — এইভাবে সার্ভিস → ক্যাটাগরি → প্যাকেজ।
 
----
+### `blog/{id}` (published public)
+slug, title{en,bn}, excerpt{en,bn}, content{en,bn}, cover?, tags[], published, createdAt
 
-## ৬. অ্যাপ ফিচার স্পেক
+### `users/{uid}` — সাইট অ্যাকাউন্ট
+role: `"admin" | "client" | "visitor"`, name, email, phone?
+**অর্ডার ফর্মে পাসওয়ার্ড আবশ্যক** — প্রতিটা অর্ডার অ্যাকাউন্টে লিংক হয়; প্রথম অর্ডারে visitor → client
 
-### Partner App (Bottom tabs: Home, Clients, Withdraw, More)
-1. **লগইন** — email/phone + password (Firebase Auth)
-2. **Home:** Available Balance, Total Earnings, Active Clients কার্ড; রেফারেল লিংক + share button (`https://<domain>/pricing?ref=CM-XXX`); announcement banner (settings/public)
-3. **Clients:** নিজের ক্লায়েন্ট লিস্ট (onSnapshot), status badge, ফোন মাস্কড (`017***678`), প্রতি ক্লায়েন্টে expected commission
-4. **Withdraw:** ব্যালান্স + রিকোয়েস্ট ফর্ম (amount ≥ settings.global.minWithdrawAmount, method, accountNumber) + হিস্টোরি
-5. **Notifications (FCM):** ক্লায়েন্ট paid → "কমিশন ক্রেডিট হয়েছে"; withdrawal approved/rejected; অ্যাকাউন্ট approved
+### `users/{uid}/orders/{clientDocId}` — অর্ডার স্ন্যাপশট
+`{ id (project A clients id), package, amount, status, referredBy, createdAt, updatedAt }`
+- ক্লায়েন্ট অর্ডারের সময় নিজে তৈরি করে (status pending)
+- **admin panel status বদলালে mirror sync** হয় (§৭)
 
-### Admin App (Bottom tabs: Dashboard, Orders, Withdrawals, More)
-1. **লগইন** — শুধু `role == "admin"` ইউজার ঢুকতে পারবে (না হলে ব্লক স্ক্রিন)
-2. **Dashboard:** Total Partners, Active Clients, Total Revenue, Pending Withdrawals + recent activity
-3. **Orders/Clients:** ট্যাব (সব / ওয়েবসাইট অর্ডার / ফ্রি লিডস); status বদলানো (paid হলে কমিশন transaction); WhatsApp কল বাটন; follow-up নোট
-4. **Withdrawals:** Approve (transaction: status + balance deduct) / Reject — push ট্যাপ করে সরাসরি এখানে
-5. **Partners:** pending approve/reject (payment number দেখা), রেট/স্ট্যাটাস এডিট
-6. **Notifications (FCM):** নতুন pricing order, নতুন কনটাক্ট মেসেজ (site project-ও লিসেন করতে হবে), নতুন উইথড্র রিকোয়েস্ট
+### `messages/{id}` — কনটাক্ট থ্রেড
+name, email, visitorUid?, thread[{from: "visitor"|"admin", text, at}], status("new"|"read"|"replied")
 
-### Push বাস্তবায়ন নোট
-- ওয়েব অ্যাপে FCM এখনো নেই — অ্যাপ সাইড থেকেই শুরু করা সহজ: Expo-তে `expo-notifications` + FCM v1 credentials
-- Trigger দরকার হলে **Firebase Cloud Functions** (`onCreate` on clients/withdrawals/messages) → FCM send। Functions এখনো নেই — নতুন করে যোগ করতে হবে (project A-তে)
-- Topic সাজেশন: `admin-alerts` (admin ডিভাইস), `partner-{partnerId}` (প্রতি পার্টনার)
-
----
-
-## ৭. ডিজাইন টোকেন (ওয়েবের সাথে ম্যাচ করতে)
-
-- **Theme:** dark only; background `#0a0a0f`; card `#0d0d13` @ 90% + backdrop-blur (glass); border `rgba(255,255,255,0.1)`
-- **Primary:** violet `#8b5cf6` (হালকা: `#a78bfa`); accent fuchsia `#e879f9`; success `#10b981`; warning `#f59e0b`; danger `#ef4444`
-- **Radius:** 16px cards, 12px inputs; **Font:** Geist Sans (fallback: Inter)
-- **Money format:** `৳1,500` (en-IN locale); ফোন মাস্ক: `017***678`
-- ব্যবহারকারীর ভাষা: বাংলা (প্রাইমারি) + English
+### `recommendations/{id}` — শুধু ক্লায়েন্টরা জমা দেয়
+name, role, text, rating(1-5), **uid** (জমাদাতা), status("pending"|"approved"), createdAt
+Rules: create শুধু signed-in **client** (uid ম্যাচ); পাবলিক শুধু approved পড়ে।
 
 ---
 
-## ৮. গুরুত্বপূর্ণ বিজনেস নিয়ম (অ্যাপেও একই)
+## ৬. Auth ফ্লো সারাংশ
 
-1. নতুন পার্টনার (Google sign-up) `pending` — admin approve না করা পর্যন্ত dashboard ব্লক; bKash/Nagad নম্বর জমা বাধ্যতামূলক
-2. Gold Partner = ৩+ পেইড অর্ডার → ২০% রেট (admin ম্যানুয়ালি সেট করে)
+| কে | কোন project | কীভাবে |
+|---|---|---|
+| Admin | A | Email/Password (`/login`) |
+| Partner | A | Email/Password বা `{phone}@rhb.partners` |
+| সাইট ভিজিটর/ক্লায়েন্ট | B | Email/Password + Google (অর্ডারে পাসওয়ার্ড আবশ্যক) |
+
+**দুই প্রজেক্টের লগইন সম্পূর্ণ আলাদা** — একটা আরেকটাকে প্রভাবিত করে না।
+
+---
+
+## ৭. Admin প্যানেল ফিচার স্পেক (Admin App)
+
+**Bottom tabs:** ড্যাশবোর্ড · অর্ডারস · উইথড্র · আরও
+
+1. **ড্যাশবোর্ড:** Total Partners, Active Clients, Total Revenue (paid clients sum), Pending Withdrawals (count + sum) + recent activity (clients + withdrawals merged, sorted by createdAt)
+2. **অর্ডারস/ক্লায়েন্টস:** ৩ ফিল্টার — সব / ওয়েবসাইট অর্ডার (`source=="pricing"`) / ফ্রি-লিডস (`amount==0 && status!="paid"`)
+   - status change: pending↔working সরাসরি update; **paid হলে transaction** (§৪ কমিশন লজিক) — paid থেকে আর বদলানো যায় না
+   - DIRECT / amount=০ হলে কমিশন ছাড়াই paid
+   - প্রতি রো-তে WhatsApp বাটন: `https://wa.me/88{phone}`
+   - status বদলালে **mirror sync**: project B-তে email দিয়ে user খুঁজে `users/{uid}/orders/{client.id}.status` আপডেট (admin site-project-এ লগইন থাকলে)
+3. **পার্টনারস:** pending লিস্ট (payment info দেখা) → **Approve** (status active + খালি partnerId হলে `CM-{max+1}` বরাদ্দ) / **Reject** (profile delete); টেবিলে Gold হিন্ট (পেইড ৩+)
+4. **উইথড্র:** Approve (transaction: status + balance deduct) / Reject
+5. **সার্ভিসেস ও প্রাইসিং:** সার্ভিস → ক্যাটাগরি → প্যাকেজ CRUD (project B content + project A packages)
+6. **মেসেজেস/রেকমেন্ডেশনস (project B):** থ্রেড reply, রেকমেন্ডেশন approve/pending/delete
+
+### Push ট্রিগার (Cloud Functions — project A, নতুন যোগ করতে হবে)
+| Trigger | পাঠাবে | Topic |
+|---|---|---|
+| clients onCreate (source=pricing) | "নতুন অর্ডার — {package}" | `admin-alerts` |
+| withdrawals onCreate | "নতুন উইথড্র রিকোয়েস্ট" | `admin-alerts` |
+| clients status→paid | "কমিশন ক্রেডিট {amount}" | `partner-{partnerId}` |
+| withdrawals update | "উইথড্র approved/rejected" | `partner-{partnerId}` |
+| users update (pending→active) | "অ্যাকাউন্ট অ্যাপ্রুভ হয়েছে" | `partner-{partnerId}` |
+
+## ৮. Partner প্যানেল ফিচার স্পেক (Partner App)
+
+**Bottom tabs:** হোম · ক্লায়েন্টস · উইথড্র · আরও
+1. **লগইন** — email/phone + password; `status=="pending"` হলে ব্লক স্ক্রিন; `"banned"` হলে লগআউট স্ক্রিন
+2. **হোম:** Available Balance (users.balance), Total Earnings, Active Clients; **রেফারেল লিংক** `{referralBaseUrl||origin}/pricing?ref={partnerId}` + share button; announcement (settings/public)
+3. **ক্লায়েন্টস:** `clients` where `referredBy == partnerId` (onSnapshot) — status badge, ফোন মাস্কড `017***678`, expected commission
+4. **উইথড্র:** ব্যালান্স + ফর্ম (amount ≥ settings.global.minWithdrawAmount, method, accountNumber) + হিস্টোরি
+5. **রিসোর্সেস:** project B `content/resources` থেকে সেলস গাইড
+6. **Notifications:** উপরের টেবিল অনুযায়ী
+
+---
+
+## ৯. ডিজাইন টোকেন
+
+- **Theme:** dark only — background `#0a0a0f`, glass card `bg-white/3% + blur + border white/10%`
+- **Primary:** violet `#8b5cf6` / `#a78bfa`; fuchsia `#e879f9`; success `#10b981`; warning `#f59e0b`; danger `#ef4444`
+- **Radius:** 16px card, 12px input; **Font:** Geist Sans (fallback Inter)
+- **Money:** `৳1,500` (en-IN); **ফোন মাস্ক:** `017***678`
+- **ভাষা:** বাংলা প্রাইমারি + English (সাইটে EN/BN টগল আছে; অ্যাপে বাংলা যথেষ্ট)
+
+---
+
+## ১০. গুরুত্বপূর্ণ বিজনেস নিয়ম (অ্যাপেও হুবহু)
+
+1. নতুন পার্টনার (রেজিস্ট্রেশন/Google) `pending` + bKash/Nagad নম্বর জমা বাধ্যতামূলক — approve হলেই প্যানেল
+2. Gold Partner = ৩+ পেইড অর্ডার → রেট ২০% (admin ম্যানুয়ালি সেট করে)
 3. ফ্রি অর্ডারে কমিশন নেই; ৩০ দিনে paid-এ গেলে কমিশন
 4. ৬ মাসের মধ্যে রিপিট ক্লায়েন্ট → client doc-এ `commissionRate: 10` override
 5. `referredBy: "DIRECT"` = admin-এর নিজের অর্ডার, কমিশন নেই
-6. ন্যূনতম উইথড্র ও রেট `settings/global` থেকে পড়তে হবে (hardcode নয়)
+6. minWithdraw, রেট — `settings/global` থেকে পড়তে হবে (hardcode নয়)
+7. ক্যাটাগরি সার্ভিসের অধীনে — নতুন প্যাকেজে অবশ্যই কোনো সার্ভিসের ক্যাটাগরি key দিতে হবে
 
 ---
 
-## ৯. ওয়েব রেফারেন্স কোড
+## ১১. ওয়েব রেফারেন্স কোড (github.com/code-myst/rakibulhaque — main branch)
 
-পুরো রেপো: `github.com/code-myst/rakibulhaque` — টাইপ ও লজিক কপি করার জন্য:
-- `src/lib/types.ts` — সব TypeScript ইন্টারফেস (একদম একই শেপ)
-- `src/hooks/use-firestore-data.ts` — mapper ফাংশন (doc → model)
-- `src/app/admin/clients/page.tsx` — কমিশন transaction লজিক
-- `firestore.rules` / `firestore.site.rules` — সিকিউরিটি
+| ফাইল | কী পাবেন |
+|---|---|
+| `src/lib/types.ts` | সব TypeScript ইন্টারফেস (হুবহু একই শেপ) |
+| `src/lib/firebase.ts` + `src/lib/firebase-site.ts` | দুই প্রজেক্ট init (নাম ধরে guard — দুই অ্যাপ একসাথে) |
+| `src/hooks/use-firestore-data.ts` | doc → model mapper ফাংশন |
+| `src/app/admin/clients/page.tsx` | কমিশন transaction + mirror sync লজিক |
+| `src/app/admin/partners/page.tsx` | approve/reject + partnerId বরাদ্দ |
+| `src/lib/site-content.ts` | সাইট অ্যাকাউন্ট/অর্ডার মিরর/রেকমেন্ডেশন helpers |
+| `firestore.rules` + `firestore.site.rules` | সম্পূর্ণ সিকিউরিটি (deploy করা হয়ে গেছে) |
+| `public/manifest.json` | PWA (ওয়েব ভার্সন এখনই installable) |
 
-**⚠️ শেষ কথা:** অ্যাপে কোনো ডেটা লোকালি সেভ করে auth bypass করার চেষ্টা করবে না — সব পড়া/লেখা Firestore rules দিয়ে গার্ডেড। নতুন ফিচার যোগ করলে আগে rules আপডেট, পরে UI।
+---
+
+## ১২. সাবধানতা
+
+- সব পড়া/লেখা Firestore rules দিয়ে গার্ডেড — অ্যাপে local data দিয়ে auth bypass-এর চেষ্টা করবে না
+- নতুন ফিচার যোগ করলে **আগে rules, পরে UI**
+- `siteUserId`/`siteEmail`-এর মতো লিংক ফিল্ড নতুন ডক-এ রাখলে rules-এ validation আপডেট করতে ভুলবেন না
+- ওয়েব অ্যাপটা PWA — অ্যাপ লঞ্চের আগে ইমার্জেন্সি fallback হিসেবে ব্যবহার করা যায়
+- নতুন পুশ-টোপিক যোগ করলে Cloud Functions deploy করতে হবে (`firebase deploy --only functions`)
+
+---
+
+*সর্বশেষ আপডেট: client/visitor account system, service-based pricing, partner registration — সহ v2*
+*Rakibul Haque Bhuiyan · Web Developer · CEO of CODEMYST · 01752845182 (WhatsApp only)*
