@@ -6,13 +6,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as React from "react";
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import Link from "next/link";
 import { motion } from "framer-motion";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import {
-  BadgeCheck,
   Check,
-  Code2,
   Flame,
   Loader2,
   MessageCircle,
@@ -174,37 +171,7 @@ function PricingPageInner() {
   };
 
   return (
-    <main className="dot-grid relative min-h-screen">
-      {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-white/10 bg-background/70 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/20 ring-1 ring-primary/40">
-              <Code2 className="h-5 w-5 text-violet-300" />
-            </div>
-            <div>
-              <p className="text-sm font-bold tracking-tight">Rakibul Haque</p>
-              <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                Web · Apps · AI — CODEMYST
-              </p>
-            </div>
-          </Link>
-          <div className="flex items-center gap-2">
-            {validRef && (
-              <Badge variant="success" className="hidden gap-1 sm:inline-flex">
-                <BadgeCheck className="h-3 w-3" /> Ref: {validRef}
-              </Badge>
-            )}
-            <Button asChild variant="outline" size="sm">
-              <a href={whatsapp ? waLink(null) : "#"} target="_blank" rel="noreferrer" className="gap-1.5">
-                <MessageCircle className="h-4 w-4 text-emerald-400" />
-                WhatsApp
-              </a>
-            </Button>
-          </div>
-        </div>
-      </header>
-
+    <div className="dot-grid relative">
       {/* Hero */}
       <section className="mx-auto max-w-6xl px-4 pb-6 pt-12 text-center sm:px-6">
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
@@ -224,6 +191,16 @@ function PricingPageInner() {
               আপনি <span className="font-semibold">{validRef}</span> পার্টনারের রেফারেলে এসেছেন —
               অর্ডার করলে সেটা অটো রেকর্ড হবে ✅
             </p>
+          )}
+          {whatsapp && (
+            <div className="mt-6 flex justify-center">
+              <Button asChild variant="outline">
+                <a href={waLink(null)} target="_blank" rel="noreferrer" className="gap-1.5">
+                  <MessageCircle className="h-4 w-4 text-emerald-400" />
+                  WhatsApp-এ কথা বলুন
+                </a>
+              </Button>
+            </div>
           )}
         </motion.div>
       </section>
@@ -321,9 +298,9 @@ function PricingPageInner() {
         )}
       </section>
 
-      {/* Footer rules */}
-      <footer className="border-t border-white/10 bg-black/20">
-        <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      {/* Rules */}
+      <section className="mx-auto max-w-6xl px-4 pb-16 sm:px-6">
+        <Card className="p-6">
           <h4 className="flex items-center gap-2 text-sm font-semibold">
             <ShieldCheck className="h-4 w-4 text-violet-300" /> সব প্ল্যানের সাধারণ নিয়ম
           </h4>
@@ -335,14 +312,8 @@ function PricingPageInner() {
               </li>
             ))}
           </ul>
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4 text-xs text-muted-foreground">
-            <p>© {new Date().getFullYear()} Rakibul Haque Bhuiyan · Web · Apps · AI — CODEMYST</p>
-            <Link href="/login" className="underline-offset-4 hover:underline">
-              Partner Portal
-            </Link>
-          </div>
-        </div>
-      </footer>
+        </Card>
+      </section>
 
       {/* Order dialog */}
       <Dialog open={!!ordering} onOpenChange={(o) => !o && setOrdering(null)}>
@@ -423,7 +394,7 @@ function PricingPageInner() {
           </div>
         </DialogContent>
       </Dialog>
-    </main>
+    </div>
   );
 }
 
@@ -431,9 +402,9 @@ export default function PricingPage() {
   return (
     <Suspense
       fallback={
-        <main className="dot-grid flex min-h-screen items-center justify-center">
+        <div className="dot-grid flex min-h-screen items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-violet-400" />
-        </main>
+        </div>
       }
     >
       <PricingPageInner />

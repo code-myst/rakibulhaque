@@ -160,16 +160,16 @@ function SidebarContent({
         ))}
       </nav>
 
-      {/* Public pricing link */}
+      {/* Public site link */}
       <div className="border-t border-white/10 p-3">
         <a
-          href="/pricing"
+          href="/"
           target="_blank"
           rel="noreferrer"
           className="glass-hover flex h-8 items-center gap-2 rounded-md border border-white/15 px-3 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
         >
           <ExternalLink className="h-3.5 w-3.5 text-sky-300" />
-          পাবলিক Pricing পেজ
+          পোর্টফোলিও সাইট দেখুন
         </a>
       </div>
 

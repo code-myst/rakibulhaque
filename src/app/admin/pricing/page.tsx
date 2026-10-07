@@ -22,6 +22,8 @@ import {
   subscribePackages,
 } from "@/lib/packages";
 import { saveCategories, subscribeCategories } from "@/lib/categories";
+import { doc, writeBatch } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { PACKAGE_CATEGORIES, type PricingCategory, type PricingPackage } from "@/lib/types";
 import { formatPrice , firebaseErrText} from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -201,6 +203,32 @@ export default function AdminPricingPage() {
   const grouped = categories
     .map((cat) => ({ ...cat, items: (packages ?? []).filter((p) => p.category === cat.key) }))
     .filter((g) => g.items.length > 0);
+  // পুরনো seed-এর প্যাকেজ — বর্তমান ক্যাটাগরি লিস্টে নেই এমনগুলো
+  const orphans = (packages ?? []).filter(
+    (p) => !categories.some((c) => c.key === p.category)
+  );
+
+  const migrateOrphans = async () => {
+    const target = categories.find((c) => c.key === "web") ?? categories[0];
+    if (!target || orphans.length === 0) return;
+    setBusy(true);
+    try {
+      const batch = writeBatch(db);
+      orphans.forEach((o) => {
+        batch.update(doc(db, "packages", o.id), { category: target.key, categoryName: target.label });
+      });
+      await batch.commit();
+      toast({
+        title: `${orphans.length}টা পুরনো প্যাকেজ সরানো হয়েছে ✅`,
+        description: `সব এখন “${target.label}” ক্যাটাগরিতে — দরকার হলে এডিট করে অন্য ক্যাটাগরিতে নিন বা ডিলিট করুন।`,
+      });
+    } catch (err) {
+      console.error("orphan migrate failed:", err);
+      toast({ variant: "destructive", title: "সরানো ব্যর্থ", description: firebaseErrText(err) });
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="space-y-5">
@@ -298,6 +326,47 @@ export default function AdminPricingPage() {
           </div>
         </div>
       ))}
+
+      {/* Orphan (old) packages */}
+      {packages !== null && orphans.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-amber-300">
+              পুরনো প্যাকেজ ({orphans.length})
+              <span className="ml-2 font-normal normal-case text-muted-foreground">
+                — আগের ক্যাটাগরি লিস্টের; নিচের ট্যাবে দেখা যাচ্ছে না
+              </span>
+            </h2>
+            <Button variant="outline" size="sm" onClick={migrateOrphans} disabled={busy}>
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              সব → “ওয়েব ডেভেলপমেন্ট”-এ সরান
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {orphans.map((p) => (
+              <Card key={p.id} className="border-amber-500/30 p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-semibold">{p.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      পুরনো ক্যাটাগরি: <code className="font-mono">{p.category}</code> · {formatPrice(p.price, p.priceType)}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="ডিলিট"
+                    className="shrink-0 text-red-400 hover:text-red-300"
+                    onClick={() => setDeleting(p)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Add / Edit dialog */}
       <Dialog open={dialogOpen} onOpenChange={(o) => { if (!o) { setAdding(false); setEditing(null); } }}>
