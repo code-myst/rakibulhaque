@@ -1,5 +1,6 @@
 import {
   addDoc,
+  arrayUnion,
   collection,
   deleteDoc,
   doc,
@@ -52,18 +53,31 @@ export function subscribeBlog(
   cb: (posts: BlogPost[]) => void,
   onlyPublished = false
 ) {
-  const q = query(collection(siteDb, "blog"), orderBy("createdAt", "desc"));
-  return onSnapshot(q, (snap) => {
-    const posts = snap.docs.map((d) => {
-      const data = d.data() as Partial<BlogPost>;
-      return {
-        ...data,
-        id: d.id,
-        createdAt: (data.createdAt as unknown as { toMillis?: () => number })?.toMillis?.() ?? 0,
-      } as BlogPost;
-    });
-    cb(onlyPublished ? posts.filter((p) => p.published) : posts);
-  });
+  const col = collection(siteDb, "blog");
+  // ভিজিটরের জন্য কোয়েরিতেই published == true (rules-এর শর্ত মেলাতে)
+  const q = onlyPublished
+    ? query(col, where("published", "==", true))
+    : query(col, orderBy("createdAt", "desc"));
+  return onSnapshot(
+    q,
+    (snap) => {
+      const posts = snap.docs
+        .map((d) => {
+          const data = d.data() as Partial<BlogPost>;
+          return {
+            ...data,
+            id: d.id,
+            createdAt: (data.createdAt as unknown as { toMillis?: () => number })?.toMillis?.() ?? 0,
+          } as BlogPost;
+        })
+        .sort((a, b) => b.createdAt - a.createdAt); // সর্টিং ব্রাউজারে, তাই নতুন ইনডেক্স লাগে না
+      cb(posts);
+    },
+    (err) => {
+      console.error("blog read failed:", err);
+      cb([]);
+    }
+  );
 }
 
 export async function saveBlogPost(
@@ -151,58 +165,71 @@ export async function sendContactMessage(input: {
 
 /** ভিজিটরের নিজের থ্রেড (real-time) */
 export function subscribeMyMessages(uid: string, cb: (msgs: ContactMessage[]) => void) {
-  const q = query(
-    collection(siteDb, "messages"),
-    where("visitorUid", "==", uid),
-    orderBy("createdAt", "desc")
+  const q = query(collection(siteDb, "messages"), where("visitorUid", "==", uid));
+  return onSnapshot(
+    q,
+    (snap) => {
+      cb(
+        snap.docs
+          .map((d) => {
+            const data = d.data() as Partial<ContactMessage>;
+            return {
+              ...(data as ContactMessage),
+              id: d.id,
+              createdAt:
+                (data.createdAt as unknown as { toMillis?: () => number })?.toMillis?.() ?? 0,
+            };
+          })
+          .sort((a, b) => b.createdAt - a.createdAt)
+      );
+    },
+    (err) => {
+      console.error("my messages read failed:", err);
+      cb([]);
+    }
   );
-  return onSnapshot(q, (snap) => {
-    cb(
-      snap.docs.map((d) => {
-        const data = d.data() as Partial<ContactMessage>;
-        return {
-          ...(data as ContactMessage),
-          id: d.id,
-          createdAt:
-            (data.createdAt as unknown as { toMillis?: () => number })?.toMillis?.() ?? 0,
-        };
-      })
-    );
-  });
 }
 
 /** ভিজিটর follow-up পাঠালে thread-এ যোগ */
 export async function visitorFollowUp(messageId: string, text: string) {
   const entry: MessageEntry = { from: "visitor", text: text.trim(), at: Date.now() };
-  const { arrayUnion } = await import("firebase/firestore");
   await updateDoc(doc(siteDb, "messages", messageId), {
     thread: arrayUnion(entry),
     status: "new",
   });
 }
 
-/* ---------------- Recommendations (guest submissions) ---------------- */
+/* ---------------- Recommendations ---------------- */
 
 export function subscribeRecommendations(
   cb: (recs: Recommendation[]) => void,
   onlyApproved = false
 ) {
-  const q = query(collection(siteDb, "recommendations"), orderBy("createdAt", "desc"));
+  const col = collection(siteDb, "recommendations");
+  // ভিজিটরের জন্য কোয়েরিতেই status == "approved" (rules-এর শর্ত মেলাতে)
+  const q = onlyApproved
+    ? query(col, where("status", "==", "approved"))
+    : query(col, orderBy("createdAt", "desc"));
   return onSnapshot(
     q,
     (snap) => {
-      const recs = snap.docs.map((d) => {
-        const data = d.data() as Partial<Recommendation>;
-        return {
-          ...(data as Recommendation),
-          id: d.id,
-          createdAt:
-            (data.createdAt as unknown as { toMillis?: () => number })?.toMillis?.() ?? 0,
-        };
-      });
-      cb(onlyApproved ? recs.filter((r) => r.status === "approved") : recs);
+      const recs = snap.docs
+        .map((d) => {
+          const data = d.data() as Partial<Recommendation>;
+          return {
+            ...(data as Recommendation),
+            id: d.id,
+            createdAt:
+              (data.createdAt as unknown as { toMillis?: () => number })?.toMillis?.() ?? 0,
+          };
+        })
+        .sort((a, b) => b.createdAt - a.createdAt); // সর্টিং ব্রাউজারে, নতুন ইনডেক্স লাগে না
+      cb(recs);
     },
-    () => cb([])
+    (err) => {
+      console.error("recommendations read failed:", err);
+      cb([]);
+    }
   );
 }
 
@@ -345,26 +372,28 @@ export async function submitClientRecommendation(input: {
 
 /** নিজের জমা করা রেকমেন্ডেশনগুলো */
 export function subscribeMyRecommendations(uid: string, cb: (recs: Recommendation[]) => void) {
-  const q = query(
-    collection(siteDb, "recommendations"),
-    where("uid", "==", uid),
-    orderBy("createdAt", "desc")
-  );
+  const q = query(collection(siteDb, "recommendations"), where("uid", "==", uid));
   return onSnapshot(
     q,
     (snap) => {
       cb(
-        snap.docs.map((d) => {
-          const data = d.data() as Partial<Recommendation>;
-          return {
-            ...(data as Recommendation),
-            id: d.id,
-            createdAt: (data.createdAt as unknown as { toMillis?: () => number })?.toMillis?.() ?? 0,
-          };
-        })
+        snap.docs
+          .map((d) => {
+            const data = d.data() as Partial<Recommendation>;
+            return {
+              ...(data as Recommendation),
+              id: d.id,
+              createdAt:
+                (data.createdAt as unknown as { toMillis?: () => number })?.toMillis?.() ?? 0,
+            };
+          })
+          .sort((a, b) => b.createdAt - a.createdAt)
       );
     },
-    () => cb([])
+    (err) => {
+      console.error("my recommendations read failed:", err);
+      cb([]);
+    }
   );
 }
 

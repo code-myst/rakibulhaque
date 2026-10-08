@@ -1,5 +1,5 @@
 "use client";
-
+import { formatDate, formatBDT, firebaseErrText } from "@/lib/utils";
 import * as React from "react";
 import Link from "next/link";
 import {
@@ -37,7 +37,7 @@ import {
 } from "@/lib/site-content";
 import { useClientRoleHeal, useLiveOrders } from "@/hooks/use-live-orders";
 import type { ContactMessage, Recommendation, SiteRole } from "@/lib/types";
-import { formatDate, formatBDT } from "@/lib/utils";
+
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -205,8 +205,13 @@ function RecommendationSection({ uid, name }: { uid: string; name: string }) {
         title: "জমা হয়েছে ✅",
         description: "অ্যাডমিন অ্যাপ্রুভ করলে হোম পেজে দেখা যাবে।",
       });
-    } catch {
-      toast({ variant: "destructive", title: "জমা দেওয়া যায়নি" });
+      } catch (err) {
+      console.error("recommendation submit failed:", err);
+      toast({
+        variant: "destructive",
+        title: "জমা দেওয়া যায়নি",
+        description: firebaseErrText(err),
+      });
     } finally {
       setBusy(false);
     }
