@@ -12,7 +12,7 @@ const BOT = /bot|crawl|spider|slurp|facebookexternalhit|preview|monitor|curl|wge
 export async function GET(req, { params }) {
   const { slug: raw } = await params;            // Next 14/15 দুটোতেই চলে
   const slug = String(raw || '').toLowerCase();
-  if (!/^[a-z0-9-]{1,40}\$/.test(slug)) notFound();
+  if (!/^[a-z0-9-]{1,40}$/.test(slug)) notFound();
 
   const home = new URL('/', req.url);
   if (!API) return NextResponse.redirect(home, 302);
@@ -28,7 +28,7 @@ export async function GET(req, { params }) {
   if (!info || !info.ok) notFound();
 
   let dest;
-  try { dest = new URL(info.url); if (!/^https?:\$/.test(dest.protocol)) throw 0; } catch { return NextResponse.redirect(home, 302); }
+  try { dest = new URL(info.url); if (!/^https?:$/.test(dest.protocol)) throw 0; } catch { return NextResponse.redirect(home, 302); }
 
   // ক্লিক গোনা — রিডাইরেক্ট আটকায় না (বট বাদ)
   const ua = req.headers.get('user-agent') || '';
