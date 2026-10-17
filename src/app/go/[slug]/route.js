@@ -1,12 +1,22 @@
 // app/go/[slug]/route.js — স্মার্ট রিডাইরেক্ট (Next.js 14 + Vercel)
 // /hostinger  (next.config.mjs-এর rewrite হয়ে)  →  /go/hostinger  →  এই ফাইল  →  302 → এফিলিয়েট লিংক
-// দরকার: `npm i @vercel/functions`  এবং Vercel env: AFFILIATE_API_URL = Apps Script-এর exec URL
+// কোনো এক্সট্রা প্যাকেজ লাগে না। শুধু Vercel env: AFFILIATE_API_URL = Apps Script-এর exec URL
 import { NextResponse } from 'next/server';
 import { notFound } from 'next/navigation';
-import { waitUntil } from '@vercel/functions';   // রেসপন্স পাঠানোর পরেও ক্লিক গোনার কাজ শেষ করতে দেয়
 
 const API = process.env.AFFILIATE_API_URL;
 const BOT = /bot|crawl|spider|slurp|facebookexternalhit|preview|monitor|curl|wget|python|headless|lighthouse/i;
+
+// রেসপন্স পাঠানোর পরেও ক্লিক গোনার কাজ শেষ করতে দেওয়া (Vercel-এর নিজস্ব রানটাইম থেকে — প্যাকেজ ছাড়াই)।
+// না পেলে (যেমন লোকাল ডেভ) true ফেরত দেয় না, তখন নিচে সংক্ষিপ্ত অপেক্ষা করা হয়।
+function runInBackground(p) {
+  try {
+    const ctx = globalThis[Symbol.for('@vercel/request-context')];
+    const wu = ctx && ctx.get && ctx.get() && ctx.get().waitUntil;
+    if (typeof wu === 'function') { wu(p); return true; }
+  } catch {}
+  return false;
+}
 
 // ৬০ সেকেন্ডের মেমরি ক্যাশ: একই সার্ভার ইনস্ট্যান্সে বারবার Apps Script ডাকতে হয় না (রিডাইরেক্ট দ্রুত)
 const TTL = 60e3;
@@ -41,9 +51,8 @@ export async function GET(req, { params }) {
   // ক্লিক গোনা — রিডাইরেক্ট আটকায় না (বট বাদ)
   const ua = req.headers.get('user-agent') || '';
   if (info.id && !BOT.test(ua)) {
-    waitUntil(
-      fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'click', id: info.id }) }).catch(() => {})
-    );
+    const click = fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'click', id: info.id }) }).catch(() => {});
+    if (!runInBackground(click)) await Promise.race([click, new Promise((r) => setTimeout(r, 1500))]);   // ব্যাকগ্রাউন্ড না পেলে সর্বোচ্চ ১.৫ সেকেন্ড অপেক্ষা
   }
 
   const res = NextResponse.redirect(dest, 302);   // 302: লিংক বদলালে সাথে সাথে কাজ করে
