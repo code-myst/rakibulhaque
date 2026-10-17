@@ -56,18 +56,25 @@ export default function AdminStorePage() {
       else await addDoc(collection(storeDb, "store_items"), { ...data, downloads: 0, createdAt: serverTimestamp() });
       setMsg(editId ? "আপডেট হয়েছে ✓" : "যোগ হয়েছে ✓");
       reset();
-    } catch (e: any) {
-      setMsg("ব্যর্থ: " + (e.code || e.message));
+    } catch (e: unknown) {
+      const err = e as { code?: string; message?: string };
+      setMsg("ব্যর্থ: " + (err.code || err.message));
     }
     setBusy(false);
   };
 
   const remove = async (i: StoreItem) => {
     if (!confirm(`"${i.name.bn || i.name.en}" ডিলিট করবেন?`)) return;
-    await deleteDoc(doc(storeDb, "store_items", i.id)).catch((e) => setMsg("ব্যর্থ: " + e.code));
+    await deleteDoc(doc(storeDb, "store_items", i.id)).catch((e: unknown) => {
+      const err = e as { code?: string };
+      setMsg("ব্যর্থ: " + err.code);
+    });
   };
   const toggle = (i: StoreItem, k: "published" | "featured") =>
-    updateDoc(doc(storeDb, "store_items", i.id), { [k]: !i[k] }).catch((e) => setMsg("ব্যর্থ: " + e.code));
+    updateDoc(doc(storeDb, "store_items", i.id), { [k]: !i[k] }).catch((e: unknown) => {
+      const err = e as { code?: string };
+      setMsg("ব্যর্থ: " + err.code);
+    });
 
   if (!ready) return <p className="p-6 text-sm text-muted-foreground">লোড হচ্ছে…</p>;
   if (!user)
