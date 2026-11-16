@@ -8,11 +8,28 @@ import { ArrowRight, ArrowUpRight, Code2, MessageSquareHeart, Sparkles, Star, Us
 import { useSiteContent } from "@/context/site-content";
 import { useLang } from "@/hooks/use-lang";
 import { serviceIcon } from "@/lib/service-icons";
+import { safeExternalUrl } from "@/lib/project-links";
 import { subscribeRecommendations } from "@/lib/site-content";
 import type { Recommendation } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+
+function ProjectExternalLink({ href, label }: { href: string; label: string }) {
+  const safeHref = safeExternalUrl(href);
+  if (!safeHref) return null;
+
+  return (
+    <a
+      href={safeHref}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex min-h-10 items-center rounded-lg border border-white/10 px-3 text-xs font-semibold text-violet-200 transition-colors hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+    >
+      {label} <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
+    </a>
+  );
+}
 
 export default function PortfolioHomePage() {
   const { siteOrDefault: site } = useSiteContent();
@@ -39,17 +56,18 @@ export default function PortfolioHomePage() {
       <section className="dot-grid relative overflow-hidden">
         <div className="pointer-events-none absolute -left-24 top-10 h-72 w-72 rounded-full bg-violet-600/20 blur-3xl" />
         <div className="pointer-events-none absolute -right-20 bottom-0 h-72 w-72 rounded-full bg-sky-500/10 blur-3xl" />
-        <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-16 sm:px-6 sm:py-24 lg:grid-cols-2">
+        <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-10 px-4 py-16 sm:px-6 sm:py-24 lg:grid-cols-2">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
+            className="min-w-0"
           >
             <Badge variant="success" className="gap-1.5">
               <Sparkles className="h-3 w-3" />
               {t(site.profile.badge)}
             </Badge>
-            <h1 className="mt-5 text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl xl:text-6xl">
+            <h1 className="mt-5 break-words text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl xl:text-6xl">
               {site.profile.name}
             </h1>
 
@@ -202,39 +220,52 @@ export default function PortfolioHomePage() {
                 </Link>
               </Button>
             </div>
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-              {featured.map((prj, i) => (
-                <motion.div
-                  key={prj.id}
-                  initial={{ opacity: 0, y: 16 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.08 }}
-                >
-                  <Card className="glass-hover h-full overflow-hidden">
-                    <div className="relative aspect-video bg-white/[0.04]">
-                      {prj.image ? (
-                        <Image src={prj.image} alt={t(prj.title)} fill className="object-cover" unoptimized />
-                      ) : (
-                        <div className="flex h-full items-center justify-center">
-                          <Code2 className="h-10 w-10 text-violet-400/30" />
+            <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4 sm:mx-0 sm:gap-5 sm:px-0">
+              {featured.map((prj, i) => {
+                const liveUrl = prj.liveUrl || prj.link;
+                return (
+                  <motion.div
+                    key={prj.id}
+                    initial={{ opacity: 0, y: 16 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.08, duration: 0.4 }}
+                    whileHover={{ y: -4 }}
+                    className="w-[min(84vw,20rem)] shrink-0 snap-start sm:w-[calc((100%-2.5rem)/3)]"
+                  >
+                    <Link href={`/projects/${encodeURIComponent(prj.id)}`} className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400">
+                      <Card className="glass-hover h-full overflow-hidden">
+                        <div className="relative aspect-video bg-white/[0.04]">
+                          {prj.image ? (
+                            <Image src={prj.image} alt={t(prj.title)} fill className="object-cover" unoptimized />
+                          ) : (
+                            <div className="flex h-full items-center justify-center">
+                              <Code2 className="h-10 w-10 text-violet-400/30" />
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                    <div className="p-4">
-                      <h3 className="font-bold">{t(prj.title)}</h3>
-                      <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{t(prj.description)}</p>
-                      <div className="mt-3 flex flex-wrap gap-1.5">
-                        {prj.tags.slice(0, 3).map((tag) => (
-                          <Badge key={tag} variant="secondary" className="text-[10px]">
-                            {tag}
-                          </Badge>
-                        ))}
+                        <div className="p-4">
+                          <h3 className="font-bold">{t(prj.title)}</h3>
+                          <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{t(prj.description)}</p>
+                          <div className="mt-3 flex flex-wrap gap-1.5">
+                            {prj.tags.slice(0, 3).map((tag) => (
+                              <Badge key={tag} variant="secondary" className="text-[10px]">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      </Card>
+                    </Link>
+                    {(liveUrl || prj.sourceCodeUrl) && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {liveUrl && <ProjectExternalLink href={liveUrl} label={lang === "bn" ? "লাইভ দেখুন" : "Live demo"} />}
+                        {prj.sourceCodeUrl && <ProjectExternalLink href={prj.sourceCodeUrl} label={lang === "bn" ? "সোর্স কোড" : "Source code"} />}
                       </div>
-                    </div>
-                  </Card>
-                </motion.div>
-              ))}
+                    )}
+                  </motion.div>
+                );
+              })}
             </div>
           </div>
         </section>
