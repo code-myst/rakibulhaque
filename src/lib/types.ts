@@ -39,8 +39,12 @@ export interface SiteProject {
   id: string;
   title: LText;
   description: LText;
+  details?: LText;
   image?: string;
+  /** Legacy live URL; retained for existing Firestore project records. */
   link?: string;
+  liveUrl?: string;
+  sourceCodeUrl?: string;
   tags: string[];
   featured: boolean;
 }

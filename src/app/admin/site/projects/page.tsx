@@ -71,7 +71,7 @@ function ProjectsEditor() {
             onClick={() =>
               update([
                 ...projects,
-                { id: `prj-${Date.now().toString(36)}`, title: { en: "", bn: "" }, description: { en: "", bn: "" }, tags: [], featured: false },
+                { id: `prj-${Date.now().toString(36)}`, title: { en: "", bn: "" }, description: { en: "", bn: "" }, details: { en: "", bn: "" }, tags: [], featured: false },
               ])
             }
           >
@@ -121,10 +121,16 @@ function ProjectsEditor() {
               onChange={(title) => patchProject(idx, { title })}
             />
             <LangField
-              label="বর্ণনা"
+              label="সংক্ষিপ্ত বর্ণনা"
               value={prj.description}
               multiline
               onChange={(description) => patchProject(idx, { description })}
+            />
+            <LangField
+              label="বিস্তারিত বর্ণনা"
+              value={prj.details ?? { en: "", bn: "" }}
+              multiline
+              onChange={(details) => patchProject(idx, { details })}
             />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
@@ -136,11 +142,21 @@ function ProjectsEditor() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>লাইভ লিংক (ঐচ্ছিক)</Label>
+                <Label>লাইভ প্রজেক্ট লিংক (ঐচ্ছিক)</Label>
                 <Input
-                  value={prj.link ?? ""}
-                  placeholder="https://…"
-                  onChange={(e) => patchProject(idx, { link: e.target.value })}
+                  type="url"
+                  value={prj.liveUrl ?? prj.link ?? ""}
+                  placeholder="https://example.com"
+                  onChange={(e) => patchProject(idx, { liveUrl: e.target.value, link: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>সোর্স কোড লিংক (ঐচ্ছিক)</Label>
+                <Input
+                  type="url"
+                  value={prj.sourceCodeUrl ?? ""}
+                  placeholder="https://github.com/…"
+                  onChange={(e) => patchProject(idx, { sourceCodeUrl: e.target.value })}
                 />
               </div>
             </div>

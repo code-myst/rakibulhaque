@@ -1,10 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
+import { Noto_Sans_Bengali } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import { Providers } from "./providers";
 import { Toaster } from "@/components/ui/toaster";
 import { PwaRegister } from "@/components/pwa-register";
+import { siteBaseUrl } from "@/lib/site-url";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -16,14 +18,31 @@ const geistMono = localFont({
   variable: "--font-geist-mono",
   weight: "100 900",
 });
+const notoBengali = Noto_Sans_Bengali({
+  subsets: ["bengali", "latin"],
+  variable: "--font-noto-sans-bengali",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
+  metadataBase: siteBaseUrl,
   title: {
     default: "Rakibul Haque — Web, Apps & AI · CODEMYST",
     template: "%s · RHB Portal",
   },
   description:
     "Portfolio, dynamic pricing & partner portal of Rakibul Haque Bhuiyan — websites, mobile/desktop apps, AI automation & agents.",
+  keywords: ["Rakibul Haque", "CODEMYST", "web developer Bangladesh", "Next.js", "AI automation"],
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    url: "/",
+    siteName: "CODEMYST",
+    title: "Rakibul Haque — Web, Apps & AI · CODEMYST",
+    description:
+      "Websites, apps and AI systems for growing businesses. Explore selected projects and services.",
+    locale: "bn_BD",
+  },
   manifest: "/manifest.json",
   icons: { icon: "/icon.svg" },
   other: { "mobile-web-app-capable": "yes" },
@@ -59,7 +78,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} min-h-screen antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${notoBengali.variable} min-h-screen font-sans antialiased`}
       >
         <Providers>{children}</Providers>
         <Toaster />
