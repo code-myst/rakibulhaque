@@ -34,6 +34,7 @@ export const metadata: Metadata = {
     "Portfolio, dynamic pricing & partner portal of Rakibul Haque Bhuiyan — websites, mobile/desktop apps, AI automation & agents.",
   keywords: ["Rakibul Haque", "CODEMYST", "web developer Bangladesh", "Next.js", "AI automation"],
   alternates: { canonical: "/" },
+  verification: { google: "xvXeimjJAegzBWd2VzyK7MD6pn4lIup0pc2Dsxr_gRY" },
   openGraph: {
     type: "website",
     url: "/",
