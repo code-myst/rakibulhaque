@@ -48,7 +48,7 @@ export default function PortfolioHomePage() {
     return () => clearInterval(id);
   }, [site.profile.roles.length]);
 
-  const featured = (site.projects ?? []).filter((p) => p.featured).slice(0, 3);
+  const featured = (site.projects ?? []).filter((p) => p.featured).slice(0, 9);
 
   return (
     <div>
